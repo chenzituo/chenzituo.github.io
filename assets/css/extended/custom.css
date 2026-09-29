@@ -7,3 +7,43 @@ mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; padding-bl
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
 }
+
+/* Immediate social-link labels for pointer and keyboard navigation. */
+.social-icons { position: relative; }
+.social-icons .social-link { position: relative; }
+.social-tooltip {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  width: max-content;
+  max-width: min(240px, calc(100vw - 48px));
+  padding: 7px 10px;
+  border-radius: 6px;
+  background: var(--primary);
+  color: var(--theme);
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: left;
+  white-space: normal;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+.social-link:hover .social-tooltip,
+.social-link:focus-visible .social-tooltip {
+  visibility: visible;
+  opacity: 1;
+}
+.social-link:first-child .social-tooltip { left: 0; transform: none; }
+.social-link:last-child .social-tooltip { left: auto; right: 0; transform: none; }
+@media (max-width: 600px) {
+  .social-icons .social-link { position: static; }
+  .social-icons .social-tooltip,
+  .social-icons .social-link:last-child .social-tooltip {
+    left: 0;
+    right: auto;
+    transform: none;
+  }
+}

@@ -35,21 +35,27 @@ params:
     Content: "A place for learning notes, ideas, and explanations worth returning to."
   socialIcons:
     - name: rss
+      description: RSS — Subscribe to new posts
       url: index.xml
     - name: github
       title: GitHub
+      description: GitHub — Code and projects
       url: https://github.com/chenzituo
     - name: googlescholar
       title: Google Scholar
+      description: Google Scholar — Research publications
       url: https://scholar.google.com/citations?user=ML80AjoAAAAJ&hl=en
     - name: linkedin
       title: LinkedIn
+      description: LinkedIn — Professional profile
       url: https://www.linkedin.com/in/zituo-chen/
     - name: instagram
       title: Instagram
+      description: Instagram — @chen.zituo
       url: https://www.instagram.com/chen.zituo/
     - name: wechat
       title: WeChat · 与子同石
+      description: WeChat — 与子同石 · 中文小说
       url: /wechat/
   fuseOpts:
     isCaseSensitive: false
