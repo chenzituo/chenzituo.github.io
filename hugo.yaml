@@ -45,6 +45,12 @@ params:
     - name: linkedin
       title: LinkedIn
       url: https://www.linkedin.com/in/zituo-chen/
+    - name: instagram
+      title: Instagram
+      url: https://www.instagram.com/chen.zituo/
+    - name: wechat
+      title: WeChat · 与子同石
+      url: /wechat/
   fuseOpts:
     isCaseSensitive: false
     shouldSort: true
