@@ -50,7 +50,7 @@ params:
       url: https://www.instagram.com/chen.zituo/
     - name: wechat
       title: WeChat · 与子同石
-      url: /wechat/
+      url: https://mp.weixin.qq.com/s/5fg632ajn8R1T7jAOVceXg
   fuseOpts:
     isCaseSensitive: false
     shouldSort: true
