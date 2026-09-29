@@ -22,7 +22,7 @@ Generative models and shared representations for physical dynamics.
   **Z. Chen**, S. Deng. NeurIPS 2026.
 - [Learnable Composition for Neural Operators](https://arxiv.org/abs/2609.03069)
 
-  **Z. Chen**, B. Zhang, S. Deng. NeurIPS AI4Science Workshop 2026 (accepted).
+  **Z. Chen**, B. Zhang, S. Deng. NeurIPS AI4Science Workshop 2026.
 - [Bridging Neural Operator and Flow Matching for a Generative PDE Foundation Model](https://openreview.net/pdf/9f6a2435e035e20a9588af5c49eaf513353f6e37.pdf)
 
   **Z. Chen**, S. Deng. NeurIPS AI4Science Workshop 2025.
