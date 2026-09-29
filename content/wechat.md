@@ -7,7 +7,7 @@ ShowPostNavLinks: false
 
 我的中文小说账号。
 
-[阅读一篇文章 · Read an article](https://mp.weixin.qq.com/s/5fg632ajn8R1T7jAOVceXg)
+[阅读一篇文章 · Read an article](https://mp.weixin.qq.com/s/qGdY2ERclhqnzpPV-9RwCQ)
 
 在微信中搜索 **与子同石**，阅读我的中文小说。
 
