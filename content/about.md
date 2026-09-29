@@ -7,9 +7,9 @@ I'm Zituo Chen, a PhD student in MIT MechE working on generative physical modeli
 
 ## Education
 
-- **MIT** — PhD, MechE · Jan 2026–present.
-- **MIT** — SM, MechE · Sep 2023–Jan 2026.
-- **Tsinghua Univ.** — BS, Energy & Power Eng. · Aug 2019–Jun 2023.
+- **Massachusetts Institute of Technology** — PhD, MechE · Jan 2026–present.
+- **Massachusetts Institute of Technology** — SM, MechE · Sep 2023–Jan 2026.
+- **Tsinghua University** — BS, Energy & Power Eng. · Aug 2019–Jun 2023.
 
 ## Fields of Interest
 
