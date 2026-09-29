@@ -1,0 +1,4 @@
+Fire favicon: Twemoji (Twitter, Inc. and other contributors), CC BY 4.0.
+Source: https://github.com/jdecked/twemoji/blob/v17.0.3/assets/svg/1f525.svg
+License: https://creativecommons.org/licenses/by/4.0/ (see emoji-LICENSE.txt).
+Changes: PNG/ICO exports at favicon sizes; monochrome Safari mask.

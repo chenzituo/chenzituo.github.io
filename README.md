@@ -43,6 +43,8 @@ Keep post images beside their `index.md` and reference them as `![Description](f
 
 For equations, set `math: true` and use `\(x\)` inline or `$$...$$` on separate lines for display equations. Math pages load MathJax 3.2.2 from jsDelivr; ordinary pages do not load it.
 
+The Functional learning note is a format-only example: expanded contents, section anchors, Citations, Appendix, and References. Its `{{< cite-note >}}` shortcode generates a human-readable citation and copyable BibTeX from the page title, URL, and date. While the note is planned it labels these as a preview; finishing the note updates their dates automatically. Add verified author–year links in the prose and full source entries in References when writing.
+
 ## Publish on GitHub Pages
 
 1. Create a GitHub repository for the blog. Use `<username>.github.io` for a personal root site, or another name for a project site.
@@ -68,5 +70,7 @@ For another static host, run `hugo --minify --baseURL 'https://your-domain.examp
 ## Theme
 
 PaperMod is pinned as a Git submodule; its MIT license is in `themes/PaperMod/LICENSE`. Site-specific overrides live in `assets/css/extended/` and `layouts/_partials/`. The theme currently emits Hugo deprecation warnings about its language properties; builds succeed.
+
+The fire favicon uses [Twemoji](https://github.com/jdecked/twemoji/blob/v17.0.3/assets/svg/1f525.svg), by Twitter, Inc. and other contributors, under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). PNG/ICO sizes and a monochrome Safari mask are derived from the SVG. Attribution and license are included in `static/emoji-CREDITS.txt` and `static/emoji-LICENSE.txt`.
 
 References: [PaperMod setup](https://github.com/adityatelange/hugo-PaperMod/wiki/Installation), [Hugo Pages deployment](https://gohugo.io/host-and-deploy/host-on-github-pages/).

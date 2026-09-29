@@ -13,6 +13,12 @@ outputs:
 params:
   description: "Learning notes, ideas, and explanations by Zituo."
   author: Zituo
+  assets:
+    favicon: favicon-fire.svg
+    favicon16x16: favicon-16x16.png?v=fire1
+    favicon32x32: favicon-32x32.png?v=fire1
+    apple_touch_icon: apple-touch-icon.png?v=fire1
+    safari_pinned_tab: safari-pinned-tab.svg?v=fire1
   defaultTheme: auto
   DateFormat: "January 2, 2006"
   mainSections: [posts]

@@ -1,0 +1,12 @@
+{{- $page := .Page -}}
+{{- $author := "Zituo Chen" -}}
+{{- $key := printf "chen%s%s" ($page.Date.Format "2006") ($page.File.ContentBaseName | urlize | replaceRE "-" "") -}}
+{{- if not $page.Params.completed }}
+<p><em>Citation preview — this note is still planned. The date will update when it is completed.</em></p>
+{{- else }}
+<p>Please cite this note as:</p>
+{{- end }}
+<blockquote><p>{{ $author }}. “{{ $page.Title }}.” {{ site.Title }} ({{ $page.Date.Format "Jan 2006" }}). <a href="{{ $page.Permalink }}">{{ $page.Permalink }}</a></p></blockquote>
+<p>BibTeX:</p>
+{{- $bib := printf "@misc{%s,\n  title = {%s},\n  author = {Chen, Zituo},\n  year = {%s},\n  month = {%s},\n  howpublished = {%s},\n  url = {%s}\n}" $key $page.Title ($page.Date.Format "2006") ($page.Date.Format "January") site.Title $page.Permalink -}}
+{{ highlight $bib "bibtex" "" }}
