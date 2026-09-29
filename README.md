@@ -27,7 +27,17 @@ hugo new content posts/my-first-post/index.md
 
 Edit the generated Markdown file in Obsidian or any text editor. Set its title, date, tags, and summary. Change `draft: true` to `draft: false` when it is ready. Future-dated posts are excluded until their date arrives.
 
-The file `content/posts/welcome/index.md` is a clearly labeled sample; replace or remove it before publishing. `content/about.md` holds the About page. Edit the title, author, description, and home introduction in `hugo.yaml`.
+`content/about.md` holds the About page. Edit the title, author, description, and home introduction in `hugo.yaml`.
+
+### Finish a planned note
+
+Replace the Coming soon text in `content/posts/<slug>/index.md` with your finished note, then run:
+
+```sh
+python3 scripts/finish_note.py physical-trajectory-modeling --summary "A short summary of the finished note."
+```
+
+Use the folder name of the note you finished. The command stamps `date` and `publishDate` with the current New York time, removes the `planned` tag, enables the table of contents and reading time, and places completed notes ahead of planned notes (newest completed first). The archive groups and displays the completion date after you commit and push. Later edits leave that date unchanged; running the command again on a completed note is rejected to preserve it. The command requires Python 3.9+ and no extra packages.
 
 Keep post images beside their `index.md` and reference them as `![Description](figure.png)`. Use standard Markdown links and images; Obsidian wikilinks and embeds are not automatically converted.
 
