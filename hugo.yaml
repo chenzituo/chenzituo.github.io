@@ -1,0 +1,75 @@
+baseURL: "https://chenzituo.github.io/"
+locale: en-US
+title: "Zituo’s Notes"
+theme: PaperMod
+timeZone: America/New_York
+enableRobotsTXT: true
+buildDrafts: false
+buildFuture: false
+pagination:
+  pagerSize: 10
+outputs:
+  home: [HTML, RSS, JSON]
+params:
+  description: "Learning notes, ideas, and explanations by Zituo."
+  author: Zituo
+  defaultTheme: auto
+  DateFormat: "January 2, 2006"
+  mainSections: [posts]
+  ShowReadingTime: true
+  ShowPostNavLinks: true
+  ShowBreadCrumbs: true
+  ShowCodeCopyButtons: true
+  ShowRssButtonInSectionTermList: true
+  showtoc: true
+  tocopen: false
+  math: false
+  homeInfoParams:
+    Title: "Welcome to Zituo’s Notes"
+    Content: "A place for learning notes, ideas, and explanations worth returning to."
+  socialIcons:
+    - name: rss
+      url: index.xml
+  fuseOpts:
+    isCaseSensitive: false
+    shouldSort: true
+    location: 0
+    distance: 1000
+    threshold: 0.35
+    minMatchCharLength: 2
+    keys: [title, permalink, summary, content]
+menu:
+  main:
+    - identifier: posts
+      name: Posts
+      url: /
+      weight: 10
+    - identifier: archive
+      name: Archive
+      url: /archives/
+      weight: 20
+    - identifier: search
+      name: Search
+      url: /search/
+      weight: 30
+    - identifier: tags
+      name: Tags
+      url: /tags/
+      weight: 40
+    - identifier: about
+      name: About
+      url: /about/
+      weight: 50
+markup:
+  highlight:
+    noClasses: false
+  goldmark:
+    extensions:
+      passthrough:
+        enable: true
+        delimiters:
+          block: [['$$', '$$'], ['\[', '\]']]
+          inline: [['\(', '\)']]
+caches:
+  images:
+    dir: :cacheDir/images

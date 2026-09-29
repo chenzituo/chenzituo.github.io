@@ -1,0 +1,9 @@
+/* Keep PaperMod's reading column and responsive layout close to the reference. */
+body { font-size: 16px; }
+.post-content { line-height: 1.8; }
+.post-content a { text-underline-offset: 3px; }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 4px; }
+mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; padding-block: 4px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+}
