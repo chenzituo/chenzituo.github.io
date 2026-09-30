@@ -41,6 +41,10 @@ params:
       title: GitHub
       description: GitHub — Code and projects
       url: https://github.com/chenzituo
+    - name: huggingface
+      title: Hugging Face
+      description: Hugging Face — Models and datasets
+      url: https://huggingface.co/Zituo
     - name: googlescholar
       title: Google Scholar
       description: Google Scholar — Research publications

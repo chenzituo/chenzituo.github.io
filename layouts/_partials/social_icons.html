@@ -2,7 +2,11 @@
   {{- range site.Params.socialIcons }}
   {{- $label := .description | default .title | default .name }}
   <a class="social-link" href="{{ trim .url " " | safeURL }}" target="_blank" rel="noopener noreferrer me" aria-label="{{ $label }}">
+    {{- if eq .name "huggingface" }}
+    <span class="social-emoji" aria-hidden="true">🤗</span>
+    {{- else }}
     {{ partial "svg.html" . }}
+    {{- end }}
     <span class="social-tooltip" aria-hidden="true">{{ $label }}</span>
   </a>
   {{- end }}
