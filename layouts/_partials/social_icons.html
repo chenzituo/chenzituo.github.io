@@ -1,9 +1,17 @@
 <div class="social-icons" {{ with .align }}align="{{ . }}"{{ end }}>
   {{- range site.Params.socialIcons }}
   {{- $label := .description | default .title | default .name }}
-  <a class="social-link" href="{{ trim .url " " | safeURL }}" target="_blank" rel="noopener noreferrer me" aria-label="{{ $label }}">
+  <a class="social-link" href="{{ trim .url " " | safeURL }}" {{ if not .internal }}target="_blank" rel="noopener noreferrer me"{{ end }} aria-label="{{ $label }}">
     {{- if eq .name "huggingface" }}
-    <span class="social-emoji" aria-hidden="true">🤗</span>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M4.5 12a8 8 0 1 1 15 0M9 13a4 4 0 0 0 6 0" />
+      <path d="M8.5 9h.01M15.5 9h.01" stroke-width="2.8" />
+      <path d="m7 15-2.5-2a1.2 1.2 0 0 0-1.5 1.8l3 3.2-3-1a1.2 1.2 0 0 0-.8 2.2l4.5 2a3 3 0 0 0 4-3.8L9 15a1.2 1.2 0 0 0-2 0Zm10 0 2.5-2a1.2 1.2 0 0 1 1.5 1.8L18 18l3-1a1.2 1.2 0 0 1 .8 2.2l-4.5 2a3 3 0 0 1-4-3.8L15 15a1.2 1.2 0 0 1 2 0Z" />
+    </svg>
+    {{- else if eq .name "bookshelf" }}
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 6c-3-2-6-2-10-2v15c4 0 7 0 10 2 3-2 6-2 10-2V4c-4 0-7 0-10 2Zm0 0v15" />
+    </svg>
     {{- else }}
     {{ partial "svg.html" . }}
     {{- end }}

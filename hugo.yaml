@@ -61,6 +61,11 @@ params:
       title: WeChat · 与子同石
       description: WeChat — 与子同石 · 中文小说
       url: /wechat/
+    - name: bookshelf
+      title: Bookshelf
+      description: Bookshelf — Books and reading notes
+      url: /bookshelf/
+      internal: true
   fuseOpts:
     isCaseSensitive: false
     shouldSort: true

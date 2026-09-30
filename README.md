@@ -74,3 +74,7 @@ PaperMod is pinned as a Git submodule; its MIT license is in `themes/PaperMod/LI
 The fire favicon uses [Twemoji](https://github.com/jdecked/twemoji/blob/v17.0.3/assets/svg/1f525.svg), by Twitter, Inc. and other contributors, under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). PNG/ICO sizes and a monochrome Safari mask are derived from the SVG. Attribution and license are included in `static/emoji-CREDITS.txt` and `static/emoji-LICENSE.txt`.
 
 References: [PaperMod setup](https://github.com/adityatelange/hugo-PaperMod/wiki/Installation), [Hugo Pages deployment](https://gohugo.io/host-and-deploy/host-on-github-pages/).
+
+## Bookshelf
+
+The rightmost social icon opens `/bookshelf/`. Add entries to `data/bookshelf.yaml` in display order, replacing the empty `[]` list. Each entry takes `title`, `author`, and optional `cover`, `url`, and `note`. Store cover images in `static/images/books/` and use paths such as `/images/books/example.jpg`. Books without a cover get a simple title placeholder.

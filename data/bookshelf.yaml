@@ -1,0 +1,7 @@
+# Add books in display order. Cover paths are relative to static/.
+# - title: "Book title"
+#   author: "Author name"
+#   cover: "/images/books/example.jpg"
+#   url: "https://example.com/book"
+#   note: "An optional reading note."
+[]

@@ -1,0 +1,20 @@
+{{- with hugo.Data.bookshelf }}
+<div class="bookshelf-grid">
+  {{- range . }}
+  <article class="book-entry">
+    <div class="book-cover">
+      {{- if .cover }}
+      <img src="{{ .cover | relURL }}" alt="Cover of {{ .title }}" loading="lazy">
+      {{- else }}
+      <div class="book-cover-placeholder" aria-hidden="true">{{ .title }}</div>
+      {{- end }}
+    </div>
+    <h2 class="book-title">{{ with .url }}<a href="{{ . }}">{{ end }}{{ .title }}{{ if .url }}</a>{{ end }}</h2>
+    <p class="book-author">By {{ .author }}</p>
+    {{- with .note }}<p class="book-note">{{ . }}</p>{{ end }}
+  </article>
+  {{- end }}
+</div>
+{{- else }}
+<p class="bookshelf-empty">Books to be added soon.</p>
+{{- end }}
