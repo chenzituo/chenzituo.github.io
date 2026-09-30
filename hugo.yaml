@@ -58,8 +58,8 @@ params:
       description: Instagram — @chen.zituo
       url: https://www.instagram.com/chen.zituo/
     - name: wechat
-      title: WeChat · 与子同石
-      description: WeChat — 与子同石 · 中文小说
+      title: WeChat · We Happy Stones
+      description: WeChat — We Happy Stones · Chinese fiction
       url: /wechat/
     - name: bookshelf
       title: Bookshelf
