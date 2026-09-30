@@ -48,15 +48,35 @@ mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; padding-bl
   }
 }
 
-/* Cover-led bookshelf, with the site's existing colors and typography. */
-.bookshelf-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px 24px; }
-.book-entry { text-align: center; min-width: 0; }
-.book-cover { height: 230px; display: flex; align-items: flex-end; justify-content: center; margin-bottom: 16px; }
+/* Bookshelf: cover grid, fine dividers, and serif captions inspired by Brian Hie. */
+.main:has(.bookshelf-page) { max-width: 1400px; }
+.bookshelf-page { font-family: Georgia, "Times New Roman", serif; }
+.bookshelf-heading { text-align: center; margin: 28px 0 44px; }
+.bookshelf-heading h1 { font-size: clamp(36px, 4vw, 56px); font-weight: 400; }
+.bookshelf-heading a { color: #b98435; font-style: italic; }
+.bookshelf-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.book-entry { text-align: center; min-width: 0; padding: 64px 24px 48px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.book-entry:nth-child(4n) { border-right: 0; }
+.book-cover { height: 310px; display: flex; align-items: flex-end; justify-content: center; margin-bottom: 18px; }
 .book-cover img { max-height: 100%; max-width: 100%; width: auto; border-radius: 0; margin: 0; }
-.book-cover-placeholder { display: flex; align-items: center; justify-content: center; height: 100%; aspect-ratio: 2 / 3; padding: 16px; background: var(--code-bg); border: 1px solid var(--border); font-family: Georgia, serif; }
-.post-content .book-title { font-size: 17px; line-height: 1.4; margin: 0 0 5px; }
-.post-content .book-author { font-size: 14px; color: var(--secondary); margin: 0; }
-.post-content .book-note { font-size: 14px; margin: 12px 0 0; }
-.bookshelf-empty { color: var(--secondary); padding: 28px 0; border-top: 1px solid var(--border); }
-@media (max-width: 600px) { .bookshelf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 18px; } .book-cover { height: 200px; } }
-@media (max-width: 360px) { .bookshelf-grid { grid-template-columns: 1fr; } }
+.book-cover-placeholder { display: flex; align-items: center; justify-content: center; height: 100%; aspect-ratio: 2 / 3; padding: 16px; background: var(--code-bg); border: 1px solid var(--border); }
+.book-title { font-size: 18px; line-height: 1.2; margin: 0 0 4px; font-weight: 700; }
+.book-author { font-size: 16px; line-height: 1.3; font-style: italic; margin: 0; }
+.book-note { font-size: 14px; line-height: 1.4; color: var(--secondary); margin: 12px 0 0; }
+.bookshelf-empty { color: var(--secondary); text-align: center; }
+@media (max-width: 1000px) {
+ .bookshelf-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+ .book-entry:nth-child(4n) { border-right: 1px solid var(--border); }
+ .book-entry:nth-child(3n) { border-right: 0; }
+ .book-cover { height: 260px; }
+}
+@media (max-width: 700px) {
+ .bookshelf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+ .book-entry { padding: 32px 16px; }
+ .book-entry:nth-child(3n) { border-right: 1px solid var(--border); }
+ .book-entry:nth-child(2n) { border-right: 0; }
+ .book-cover { height: 230px; }
+ .book-title { font-size: 16px; }
+ .book-author { font-size: 14px; }
+}
+@media (max-width: 380px) { .book-cover { height: 180px; } .book-entry { padding-inline: 10px; } }

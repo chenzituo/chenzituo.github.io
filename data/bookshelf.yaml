@@ -1,7 +1,194 @@
-# Add books in display order. Cover paths are relative to static/.
-# - title: "Book title"
-#   author: "Author name"
-#   cover: "/images/books/example.jpg"
-#   url: "https://example.com/book"
-#   note: "An optional reading note."
-[]
+[
+  {
+    "title": "Eye of the Whale: Epic Passage from Baja to Siberia",
+    "author": "Dick Russell",
+    "cover": "/images/books/01.jpg",
+    "url": "https://openlibrary.org/works/OL2712102W",
+    "cover_source": "https://covers.openlibrary.org/b/id/787091-L.jpg"
+  },
+  {
+    "title": "Around the World in Eighty Days",
+    "author": "Jules Verne",
+    "cover": "/images/books/02.jpg",
+    "url": "https://openlibrary.org/isbn/9780140449068",
+    "cover_source": "https://covers.openlibrary.org/b/isbn/9780140449068-L.jpg",
+    "isbn": "9780140449068"
+  },
+  {
+    "title": "Lord of the Flies",
+    "author": "William Golding",
+    "cover": "/images/books/03.jpg",
+    "url": "https://openlibrary.org/works/OL455327W",
+    "cover_source": "https://covers.openlibrary.org/b/id/8684447-L.jpg"
+  },
+  {
+    "title": "The Unbearable Lightness of Being",
+    "author": "Milan Kundera",
+    "cover": "/images/books/04.jpg",
+    "url": "https://openlibrary.org/isbn/9780061148521",
+    "cover_source": "https://covers.openlibrary.org/b/isbn/9780061148521-L.jpg",
+    "isbn": "9780061148521"
+  },
+  {
+    "title": "The Story of the Stone",
+    "author": "Cao Xueqin",
+    "cover": "/images/books/05.jpg",
+    "url": "https://openlibrary.org/isbn/9780140442939",
+    "cover_source": "https://covers.openlibrary.org/b/isbn/9780140442939-L.jpg",
+    "isbn": "9780140442939"
+  },
+  {
+    "title": "One Hundred Years of Solitude",
+    "author": "Gabriel García Márquez",
+    "cover": "/images/books/06.jpg",
+    "url": "https://openlibrary.org/works/OL43108828W",
+    "cover_source": "https://covers.openlibrary.org/b/id/15185412-L.jpg"
+  },
+  {
+    "title": "Norwegian Wood",
+    "author": "Haruki Murakami",
+    "cover": "/images/books/07.jpg",
+    "url": "https://openlibrary.org/isbn/9780375704024",
+    "cover_source": "https://images.penguinrandomhouse.com/cover/9780375704024",
+    "isbn": "9780375704024"
+  },
+  {
+    "title": "Dance of the Happy Shades",
+    "author": "Alice Munro",
+    "cover": "/images/books/08.jpg",
+    "url": "https://openlibrary.org/works/OL931679W",
+    "cover_source": "https://covers.openlibrary.org/b/id/99967-L.jpg"
+  },
+  {
+    "title": "The Sound and the Fury",
+    "author": "William Faulkner",
+    "cover": "/images/books/09.jpg",
+    "url": "https://openlibrary.org/works/OL82870W",
+    "cover_source": "https://covers.openlibrary.org/b/id/8292212-L.jpg"
+  },
+  {
+    "title": "Strait Is the Gate",
+    "author": "André Gide",
+    "cover": "/images/books/10.jpg",
+    "url": "https://www.penguin.com.au/books/strait-is-the-gate-9780141185248",
+    "cover_source": "https://cdn2.penguin.com.au/covers/400/9780141185248.jpg",
+    "isbn": "9780141185248"
+  },
+  {
+    "title": "The Great Gatsby",
+    "author": "F. Scott Fitzgerald",
+    "cover": "/images/books/11.jpg",
+    "url": "https://openlibrary.org/works/OL468431W",
+    "cover_source": "https://covers.openlibrary.org/b/id/10590366-L.jpg"
+  },
+  {
+    "title": "The Collected Short Stories of F. Scott Fitzgerald",
+    "author": "F. Scott Fitzgerald",
+    "cover": "/images/books/12.jpg",
+    "url": "https://openlibrary.org/works/OL15320536W",
+    "cover_source": "https://covers.openlibrary.org/b/id/6402575-L.jpg"
+  },
+  {
+    "title": "Kafka on the Shore",
+    "author": "Haruki Murakami",
+    "cover": "/images/books/13.jpg",
+    "url": "https://openlibrary.org/isbn/9781400079278",
+    "cover_source": "https://images.penguinrandomhouse.com/cover/9781400079278",
+    "isbn": "9781400079278"
+  },
+  {
+    "title": "Jean-Christophe",
+    "author": "Romain Rolland",
+    "cover": "/images/books/14.jpg",
+    "url": "https://openlibrary.org/books/OL977232M",
+    "cover_source": "https://covers.openlibrary.org/b/id/8461171-L.jpg"
+  },
+  {
+    "title": "The Glass Bead Game",
+    "author": "Hermann Hesse",
+    "cover": "/images/books/15.jpg",
+    "url": "https://openlibrary.org/works/OL36435470W",
+    "cover_source": "https://covers.openlibrary.org/b/id/15010279-L.jpg"
+  },
+  {
+    "title": "The Fountainhead",
+    "author": "Ayn Rand",
+    "cover": "/images/books/16.jpg",
+    "url": "https://openlibrary.org/works/OL731663W",
+    "cover_source": "https://covers.openlibrary.org/b/id/6767765-L.jpg"
+  },
+  {
+    "title": "Just Kids",
+    "author": "Patti Smith",
+    "cover": "/images/books/17.jpg",
+    "url": "https://openlibrary.org/works/OL15474046W",
+    "cover_source": "https://covers.openlibrary.org/b/id/6671097-L.jpg"
+  },
+  {
+    "title": "The Long Goodbye",
+    "author": "Raymond Chandler",
+    "cover": "/images/books/18.jpg",
+    "url": "https://openlibrary.org/isbn/9780394757681",
+    "cover_source": "https://covers.openlibrary.org/b/isbn/9780394757681-L.jpg?default=false",
+    "isbn": "9780394757681"
+  },
+  {
+    "title": "Doctor Zhivago",
+    "author": "Boris Pasternak",
+    "cover": "/images/books/19.jpg",
+    "url": "https://openlibrary.org/isbn/9780307390950",
+    "cover_source": "https://covers.openlibrary.org/b/isbn/9780307390950-L.jpg",
+    "isbn": "9780307390950"
+  },
+  {
+    "title": "Nine Stories",
+    "author": "J. D. Salinger",
+    "cover": "/images/books/20.jpg",
+    "url": "https://openlibrary.org/works/OL3335290W",
+    "cover_source": "https://covers.openlibrary.org/b/id/392623-L.jpg"
+  },
+  {
+    "title": "The Museum of Innocence",
+    "author": "Orhan Pamuk",
+    "cover": "/images/books/21.jpg",
+    "url": "https://openlibrary.org/isbn/9780307386243",
+    "cover_source": "https://covers.openlibrary.org/b/isbn/9780307386243-L.jpg",
+    "isbn": "9780307386243"
+  },
+  {
+    "title": "Everything That Rises Must Converge",
+    "author": "Flannery O’Connor",
+    "cover": "/images/books/22.jpg",
+    "url": "https://openlibrary.org/works/OL65289W",
+    "cover_source": "https://covers.openlibrary.org/b/id/6258585-L.jpg"
+  },
+  {
+    "title": "The Idiot",
+    "author": "Fyodor Dostoevsky",
+    "cover": "/images/books/23.jpg",
+    "url": "https://openlibrary.org/works/OL20906897W",
+    "cover_source": "https://covers.openlibrary.org/b/id/10249475-L.jpg"
+  },
+  {
+    "title": "Meditations in an Emergency",
+    "author": "Frank O’Hara",
+    "cover": "/images/books/24.jpg",
+    "url": "https://openlibrary.org/works/OL8398767W",
+    "cover_source": "https://covers.openlibrary.org/b/id/568785-L.jpg"
+  },
+  {
+    "title": "Oblivion: Stories",
+    "author": "David Foster Wallace",
+    "cover": "/images/books/25.jpg",
+    "url": "https://openlibrary.org/works/OL2943598W",
+    "cover_source": "https://covers.openlibrary.org/b/id/191073-L.jpg",
+    "note": "The Chinese edition adds “Forever Overhead.”"
+  },
+  {
+    "title": "Infinite Jest",
+    "author": "David Foster Wallace",
+    "cover": "/images/books/26.jpg",
+    "url": "https://openlibrary.org/works/OL2943602W",
+    "cover_source": "https://covers.openlibrary.org/b/id/8237639-L.jpg"
+  }
+]
