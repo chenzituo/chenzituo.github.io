@@ -1,6 +1,6 @@
 # Original explanatory diagrams
 
-[functional-learning-elements.tex](functional-learning-elements.tex) is the editable LaTeX/TikZ source for Figure 7. It summarizes the note's building elements and separates optimization, physical evolution, and generative transport. The website uses a vector SVG exported from the compiled PDF, with a white background and embedded glyph outlines for consistent rendering.
+[functional-learning-elements.tex](functional-learning-elements.tex) is the editable LaTeX/TikZ source for Figure 11. It summarizes the note's building elements and separates optimization, physical evolution, and generative transport. The website uses a vector SVG exported from the compiled PDF, with a white background and embedded glyph outlines for consistent rendering.
 
 From the blog repository root:
 
@@ -13,7 +13,7 @@ pdftoppm -scale-to 1600 -png -singlefile /tmp/functional-learning-diagram/functi
 
 Inspect the rendered PNG after changes and verify the SVG in the blog preview. The PDF, auxiliary files, log, and PNG are build intermediates outside the repository. Paper figures remain separate, unchanged extracts with source attribution.
 
-[functional-theory-error-chain.tex](functional-theory-error-chain.tex) is the source for Figure 11. It traces representation, prototype, smoothing, velocity-learning, and numerical errors in one physical Wasserstein metric. It illustrates the derived bound; it is not a measured result.
+[functional-theory-error-chain.tex](functional-theory-error-chain.tex) is the source for Figure 14. It traces representation, prototype, smoothing, velocity-learning, and numerical errors in one physical Wasserstein metric. It illustrates the derived bound; it is not a measured result.
 
 From the blog repository root:
 

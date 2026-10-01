@@ -7,6 +7,7 @@ tags: [functional-learning, pdes, neural-networks, flow-matching]
 summary: "Why PDE learning needs a functional view of latent codes, and how that view connects solvers, physical constraints, uncertainty, and adaptive transport."
 showtoc: true
 tocopen: false
+UseHugoToc: true
 math: true
 ShowReadingTime: true
 publishDate: 2026-10-01T10:47:44-04:00
@@ -15,15 +16,90 @@ completed: true
 
 *Click any figure to open its full-resolution image.*
 
-Neural PDE models often compress a field into a latent vector and learn what happens to that vector. But what does the vector represent? With a coordinate-query decoder, fixing the code \(z\) defines a whole function \(u_z(x)\). The code and its decoder together describe the field. Querying another mesh gives another set of observations of that same field.
+Suppose we learn temperature fields from simulations. Different simulations store different meshes, but we want to describe the same physical quantity. We may need its gradient to compute heat flux, predict its response to new initial conditions, or reconstruct it from incomplete measurements. Each use asks something different of the learned field.
 
-For a PDE, that distinction matters. We may need the field's derivatives, boundary values, fluxes, or response to a change of initial conditions. We may also need a distribution of fields when observations leave the solution uncertain. Accuracy in a vector of sampled values does not, by itself, establish accuracy in these operations.
+Neural PDE models often compress these observations into latent vectors. With a coordinate-query decoder, fixing the code \(z\) defines a whole function \(u_z(x)\). Its meaning comes from the code and decoder together. The important question is what this represented function lets us compute accurately.
 
-**The case for functional learning is to make these operations part of the learning problem.** We specify what a function means, how its errors are measured, and how it should change; latent coordinates then provide a way to compute those changes. This becomes especially useful when a PDE model must work across discretizations, support physical calculations, or serve several tasks.
+**Functional learning makes the field, its physical operations, and its required accuracy part of the learning problem.** We begin with those requirements, explain how arrays and codes describe functions, and then develop three learning tasks: finding a function, learning a map between functions, and generating a law over functions. Mathematical examples from FGD, a 2025 operator-approximation paper, and FFM make these tasks concrete. Their shared ingredients lead to model design, error analysis, PDE applications, and the open questions at the end.
 
-Three papers give us a mathematical starting point. **Functional Gradient Descent** (FGD; [Csillag et al., 2026](https://arxiv.org/abs/2606.16926)) asks how to update a function to reduce an objective. **Quantitative Approximation for Neural Operators in Nonlinear Parabolic Equations** ([Furuya et al., ICLR 2025](https://proceedings.iclr.cc/paper_files/paper/2025/hash/d4b6ccf3acd6ccbc1093e093df345ba2-Abstract-Conference.html)) asks how a neural operator can approximate an entire PDE solution map. **Functional Flow Matching** (FFM; [Kerrigan et al., 2024](https://proceedings.mlr.press/v238/kerrigan24a.html)) asks how to move a distribution of functions toward a target distribution. We will develop these three objects—function, operator, and law—then use [FunDiff](https://doi.org/10.1038/s41467-026-72292-0) and related PDE models to see what their shared building elements enable. The later questions concern learned solvers, inverse inference, and transport that can adapt its representation.
+## 1. What do we need from a learned PDE solution?
 
-## Functions and latent codes
+A solver returns a numerical description of a field. Our learning task may need to change how that field is sampled, apply physical operators to it, or use it under new conditions. [FunDiff](https://doi.org/10.1038/s41467-026-72292-0) and related function-representation models bring together three requirements: heterogeneous observations, physical operations, and a common field across tasks. Incomplete observations add a fourth requirement: an explicit account of uncertainty.
+
+### Learning from simulations on different meshes
+
+Suppose one simulation stores a field on a \(64\times64\) mesh and another uses \(128\times128\). Their arrays have different sizes, but both sample a function on the physical domain. Write
+
+$$
+y_i=\mathcal O_i u_i+\varepsilon_i.
+$$
+
+Here \(\mathcal O_i\) records the sampling rule, such as point values or cell averages, and \(\varepsilon_i\) is observation error. For point values, choose a function space \(U\) with enough regularity to define evaluation; arbitrary \(L^2\) equivalence classes do not supply point values.
+
+More query locations give more samples of a represented field. Identifying finer physical structure also requires enough information in the data and enough capacity in the representation. Changing the domain geometry brings additional requirements beyond changing the sample count.
+
+### Computing derivatives, residuals, and physical quantities
+
+A PDE acts on functions through operations such as differentiation, integration, and boundary evaluation. For a temperature field with thermal conductivity \(k\), the heat flux \(-k\nabla u\) depends on a derivative. A small error in stored field values need not imply a small error in that flux.
+
+This distinction has a simple mathematical example. On \((0,2\pi)\), take the error function
+
+$$
+e_n(x)=\frac{\sin(nx)}n.
+$$
+
+Its norms are
+
+$$
+\|e_n\|_{L^2}=\frac{\sqrt\pi}{n},
+\qquad
+\|e_n'\|_{L^2}=\sqrt\pi,
+\qquad
+\|e_n''\|_{L^2}=n\sqrt\pi.
+$$
+
+The field error vanishes, the first-derivative error stays constant, and the second-derivative error grows. A PDE containing second derivatives would therefore need more than an \(L^2\) reconstruction criterion. Sobolev norms measure derivative errors directly; task-specific estimates can target the physical quantities we need. For shocks and interfaces, weak formulations may be more appropriate than high-order pointwise differentiation.
+
+### Reusing a field across prediction, reconstruction, and inference
+
+A representation of a field can be reused when the task changes, provided it supports the operations the new task requires. The representation supplies a common object; each task still needs its own trained map, dynamics, or inference model.
+
+| Task | What must be added to the representation |
+| --- | --- |
+| Reconstruction and denoising | An observation model and prior information |
+| Forward PDE prediction | A map from problem data to solution fields |
+| Physical forecasting | A dynamics model and time integration |
+| Inverse inference | A likelihood or conditioning model and uncertainty assessment |
+| Derived quantities | A functional such as an integral, flux, or gradient |
+
+### Describing uncertainty when observations are incomplete
+
+If two admissible fields produce the same measurements, a deterministic reconstruction cannot identify which one was observed. A prior and an observation model can instead specify a conditional distribution over possible fields. This is uncertainty about the physical state given the available information, even when a fully specified forward PDE has a unique solution.
+
+These requirements explain the three learning tasks ahead. We may need to fit one field, predict fields as problem data change, or sample possible fields given a context. To state their accuracy consistently, we first need to separate the function from its numerical coordinates.
+
+## 2. From arrays and latent codes to functions
+
+The physical state is a function; samples, basis coefficients, and latent codes describe it for computation. Many established numerical and neural methods already use this interpretation. The aim is to carry it through the operations and accuracy requirements of the whole model.
+
+### What existing PDE models already provide
+
+The functional viewpoint has a long numerical history. A finite-element approximation \(u_h(x)=\sum_jc_j\phi_j(x)\) already interprets coefficients as coordinates of a function. Neural methods change the representation and which parts of the solution process we learn. The following comparison separates those choices; the families can overlap.
+
+| Approach | What it computes or learns | Limitation relevant here |
+| --- | --- | --- |
+| Conventional discretized solvers | Values, cell averages, or basis coefficients satisfying a discrete PDE | Resolving small scales can be expensive; changing problem data generally requires another solve |
+| Neural predictors on a fixed grid | A map between sampled input and output arrays | Grid transfer needs an explicit mechanism; sample accuracy alone does not control derivatives or physical constraints |
+| Coordinate networks and PINNs | A function \(u_\theta(x,t)\), fitted to observations and often a PDE residual | Optimization and residual conditioning can be difficult; a basic per-problem fit must be repeated for a new problem |
+| Neural operators | A solution map \(\mathcal S:a\mapsto u\) across a family of inputs | Mesh flexibility does not ensure accuracy on new physical regimes, constraints, or derivative-based quantities |
+| Reduced and latent models | A basis or decoder plus dynamics or a processor in its coordinates | Compression can discard important scales; reconstruction accuracy does not establish accuracy of the represented updates |
+| Generative field models | A conditional distribution of solutions or corrections | Distributional accuracy, physical validity, and consistency across resolutions need separate checks |
+
+[PINNs](https://arxiv.org/abs/1711.10561) make the function and its differentiated residual explicit. [DeepONet](https://www.nature.com/articles/s42256-021-00302-5) and [Fourier Neural Operator](https://arxiv.org/abs/2010.08895) learn solution maps across problem families, within the broader [operator-learning framework](https://jmlr.org/papers/v24/21-1524.html). CORAL, DINo, and function-space autoencoders connect functions to learned coordinates; FFM and FunDiff add generative modeling. Many of the functional ingredients are already present in these methods.
+
+The limitations in the table identify requirements to examine, rather than failures of every method in a family. One documented example is [Krishnapriyan et al.'s PINN study](https://arxiv.org/abs/2109.01050): its convection and reaction–diffusion examples expose optimization difficulties despite adequate network expressivity. Simply making the network larger does not address every source of error.
+
+### How a code and decoder define a field
 
 Consider a coordinate-query network \(F(z,x)\). Its two inputs have different roles: \(z\) selects a function, and \(x\) selects where to evaluate it. For example, a simple decoder could be
 
@@ -49,6 +125,16 @@ Thus \(z\) is a coordinate description of \(u_z\) through \(D\). Its meaning dep
 
 A fixed decoder selects a family \(\mathcal M=D(Z)\subset H\). Training the decoder changes the family; updating a code moves within it. [Autoencoders in Function Space](https://www.jmlr.org/papers/v26/25-0035.html) uses this separation to define reconstruction at the function level.
 
+### Function spaces, observations, and physical accuracy
+
+An observation operator \(\mathcal O_h:H\to Y_h\) describes how a field becomes data on a particular mesh or sensor set. A physical operator \(\mathcal A_a\) describes a PDE or measurement model, and a functional \(Q\) extracts a quantity of interest. Their domains and continuity properties determine which field errors matter.
+
+For example, differentiation is not a bounded operation on \(L^2\), as the temperature-field example showed. If we need derivative accuracy, we must control a stronger norm or establish a separate estimate. Point observations require enough regularity to define point values; cell averages and weak observations may be more suitable for rough fields.
+
+The decoder's output space, the norm in its training objective, and the numerical approximation of that norm must therefore match the task. A smooth network gives computable derivatives, but their accuracy is a further requirement.
+
+### Three learning objects: a function, an operator, and a law
+
 There are several things we might learn with such a representation:
 
 | Object | Mathematical question | Example |
@@ -61,28 +147,15 @@ For the first problem, we need an update that reduces a functional \(\mathcal L(
 
 **Notation.** We use \(t\) for physical time, \(s\) for optimization time, and \(\tau\) for generative time. A space-time field \(u(x,t)\) can be one state in an optimization or generative process; updating it changes the entire field.
 
-## How we have been modeling PDE solutions
+## 3. Three tasks of functional learning
 
-The functional viewpoint has a long numerical history. A finite-element approximation \(u_h(x)=\sum_jc_j\phi_j(x)\) already interprets coefficients as coordinates of a function. Neural methods change the representation and which parts of the solution process we learn. The following comparison separates those choices; the families can overlap.
+The PDE requirements lead to three different targets. An objective defines the function we want to find; a family of equations defines the solution map we want to approximate; data and conditioning information define the law we want to generate. The following examples develop the mathematics of each target.
 
-| Approach | What it computes or learns | Limitation relevant here |
-| --- | --- | --- |
-| Conventional discretized solvers | Values, cell averages, or basis coefficients satisfying a discrete PDE | Resolving small scales can be expensive; changing problem data generally requires another solve |
-| Neural predictors on a fixed grid | A map between sampled input and output arrays | Grid transfer needs an explicit mechanism; sample accuracy alone does not control derivatives or physical constraints |
-| Coordinate networks and PINNs | A function \(u_\theta(x,t)\), fitted to observations and often a PDE residual | Optimization and residual conditioning can be difficult; a basic per-problem fit must be repeated for a new problem |
-| Neural operators | A solution map \(\mathcal S:a\mapsto u\) across a family of inputs | Mesh flexibility does not ensure accuracy on new physical regimes, constraints, or derivative-based quantities |
-| Reduced and latent models | A basis or decoder plus dynamics or a processor in its coordinates | Compression can discard important scales; reconstruction accuracy does not establish accuracy of the represented updates |
-| Generative field models | A conditional distribution of solutions or corrections | Distributional accuracy, physical validity, and consistency across resolutions need separate checks |
+### Functional optimization: finding one solution {#functional-gradient-descent}
 
-[PINNs](https://arxiv.org/abs/1711.10561) make the function and its differentiated residual explicit. [DeepONet](https://www.nature.com/articles/s42256-021-00302-5) and [Fourier Neural Operator](https://arxiv.org/abs/2010.08895) learn solution maps across problem families, within the broader [operator-learning framework](https://jmlr.org/papers/v24/21-1524.html). CORAL, DINo, and function-space autoencoders connect functions to learned coordinates; FFM and FunDiff add generative modeling. Many of the functional ingredients are already present in these methods.
+Functional optimization treats the candidate function as the unknown. [Functional Gradient Descent](https://arxiv.org/abs/2606.16926) provides a concrete way to connect its updates to geometry and representation error. We first derive the gradient, then use a PDE energy and the paper's examples to see what changes when the representation adapts.
 
-The limitations in the table identify requirements to examine, rather than failures of every method in a family. One documented example is [Krishnapriyan et al.'s PINN study](https://arxiv.org/abs/2109.01050): its convection and reaction–diffusion examples expose optimization difficulties despite adequate network expressivity. Simply making the network larger does not address every source of error.
-
-Our question is how to carry the functional interpretation through the whole learning system: the norm, physical operations, update directions, solution map, and probability law. We now examine the three learning objects in that order.
-
-## Functional gradient descent
-
-### From a directional derivative to a gradient
+#### From a directional derivative to a gradient
 
 Start with a loss \(\mathcal L(u)\) and perturb the function by a small amount \(\epsilon h\). For a Fréchet differentiable functional,
 
@@ -111,7 +184,7 @@ $$
 
 The second identity follows by substituting the first into the chain rule. Along a sufficiently regular trajectory, the loss decreases at a rate equal to the squared gradient norm. Convergence to a global minimum additionally depends on the objective.
 
-### The same PDE energy under two geometries
+#### The same PDE energy under two geometries
 
 Consider the Dirichlet energy on a bounded domain with homogeneous boundary conditions:
 
@@ -138,7 +211,7 @@ $$
 
 Writing \(A=-\Delta\) for the weak Dirichlet operator, the last equation says \(Ag=Au-f\), hence \(g=u-A^{-1}f\). The two gradients are related by an inverse elliptic operator. They describe descent for the same energy using different geometries, with different computational costs. The \(L^2\) expression needs the additional operator-domain regularity above; the energy itself is defined on \(H_0^1\).
 
-### Adaptive approximation of the gradient
+#### Adaptive approximation of the gradient
 
 An ideal update is \(u_{k+1}=u_k-\eta\nabla_H\mathcal L(u_k)\). In practice, we have to represent both \(u_k\) and its gradient using finitely many degrees of freedom.
 
@@ -168,7 +241,7 @@ Figure 2 shows the numerical consequence in the paper's toy reconstruction examp
 
 The paper's algorithm uses a computable error bound for its refinement test. Its analysis also allows approximations in a larger Banach space than the Hilbert space defining the gradient. Under its extension, compatibility, smoothness, and step-size assumptions, the authors bound the minimum squared gradient norm over iterations; a Polyak–Łojasiewicz-type condition gives a geometric objective-gap bound. The full conditions are in [Section 3](https://arxiv.org/abs/2606.16926).
 
-### Two applications: wave equations and inverse rendering
+#### Two applications: wave equations and inverse rendering
 
 FGD's second experiment optimizes a space-time function through a wave-equation residual and initial-condition penalties. Its third optimizes density and view-dependent color through a differentiable rendering operator. Both fit the template
 
@@ -194,9 +267,9 @@ Inverse rendering changes the task operator. The unknown functions describe scen
 
 {{< figure src="figures/fgd-inverse-rendering.png" link="figures/fgd-inverse-rendering.png" alt="Novel-view renderings of a potted plant through optimization iterations, comparing a neural network, fixed-grid FGD, and adaptive FGD, with test-loss curves." caption="**Figure 4.** Inverse rendering of the Ficus scene through optimization iterations, with test-loss curves for neural, fixed, and adaptive FGD representations. Source: [Csillag et al., Figure 4](https://arxiv.org/abs/2606.16926v1), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)." >}}
 
-Both applications specify an objective on functions and then approximate its updates. They seek an optimized function. If the initial conditions or coefficients change, however, the desired function changes too. This brings us to the second object: a map that serves an entire family of problems.
+Both applications specify an objective on functions and then approximate its updates. They seek an optimized function. If the initial conditions or coefficients change, however, the desired function changes too. The next task learns a map that serves an entire family of problems.
 
-## Functional operator learning
+### Functional operator learning: predicting across problems {#functional-operator-learning}
 
 A per-problem optimization produces one solution. Operator learning produces a rule for obtaining solutions when the problem data change. Let \(\mathcal A\) be an input function space and \(\mathcal U\) an output function space. The object is
 
@@ -217,7 +290,7 @@ Here \(\rho\) describes the input problems we expect to encounter. The same para
 
 DeepONet and FNO are established examples. For a PDE-based mathematical counterpart to FGD and FFM, we will use **Furuya, Taniguchi, and Okuda's ICLR 2025 paper**. Its construction connects operator layers to a convergent solution procedure. This lets us ask what each layer computes and why errors need not accumulate without control.
 
-### From a PDE to a fixed-point map
+#### From a PDE to a fixed-point map
 
 Consider a semilinear parabolic equation on a bounded domain \(\Omega\):
 
@@ -251,7 +324,7 @@ $$
 
 A short time interval can make this possible. For intuition, suppose \(\|E(t)\|\le M_E\), and \(\mathcal N\) has Lipschitz constant \(L_{\mathcal N}\) on the relevant bounded range. In a supremum-in-time norm, the integral contribution has Lipschitz bound \(M_E L_{\mathcal N}T\). Choosing \(T\) small enough makes it contractive, provided the map also stays inside that range. The paper uses semigroup smoothing estimates to work in mixed Lebesgue norms; Appendix I records its hypotheses.
 
-### Turning the solution procedure into an operator network
+#### Turning the solution procedure into an operator network
 
 Separate the initial trajectory and nonlinear correction:
 
@@ -290,7 +363,7 @@ $$
 
 The first term is unfinished solution iteration. The second is the cost of approximating its blocks, amplified by stability. Greater depth reduces the first term; improving kernels, nonlinearities, or numerical quadrature reduces the second. **Depth alone cannot remove the approximation floor.** Appendix I derives this bound and distinguishes the continuum construction from its numerical evaluation.
 
-### What the 2025 theorem guarantees
+#### What the 2025 theorem guarantees
 
 Under the paper's semigroup, nonlinearity, and kernel-expansion assumptions, each initial-data radius \(R\) admits a sufficiently short \(T\). For any \(\varepsilon\in(0,1)\), a ReLU neural operator exists with
 
@@ -315,7 +388,7 @@ The kernel rank \(N\) is a separate cost, and the theorem supplies no general ra
 
 The choice of output norm is consequential. Operator approximation can use Banach spaces; it does not require the Hilbert structure used earlier for a Riesz gradient. If a downstream task needs a flux or a derivative, its norm and regularity requirements must enter the operator problem too.
 
-### A contemporary architectural connection
+#### A contemporary architectural connection
 
 [**Continuum Attention for Neural Operators** (Calvello et al., JMLR 2025)](https://www.jmlr.org/papers/v26/24-0879.html) gives a complementary example. Attention can be defined on functions through an integral:
 
@@ -327,17 +400,37 @@ $$
 
 Here \(Q,K,V\) are pointwise linear query, key, and value maps. Finite attention approximates this operation numerically; quadrature weights matter on nonuniform nodes. The paper proves universality for a specified modified transformer operator on compact input sets, including results in differentiable-function and Sobolev norms. Those are existence guarantees, with assumptions on the spaces and architecture (Theorems 22–23), rather than an error rate for arbitrary meshes. Its spatial attention weights also differ from FFM's probability law over whole functions.
 
-We now have a map \(\mathcal S\) that takes input functions to solution functions. Random inputs \(a\sim\rho\) induce a solution law \(\mathcal S_\#\rho\). But when a physical context leaves several fields possible, we may want to learn that conditional law directly. This is the third object, addressed by FFM.
+Figure 6 shows how the continuum-attention paper realizes an operator architecture. The input function is combined with coordinates, lifted to a feature function, processed by attention blocks, and projected to an output function. In the paper's notation the output is \(z(x)\); this denotes a function, while our \(z\) denotes a latent vector.
 
-## Functional flow matching
+{{< figure src="figures/continuum-attention-architecture.png" link="figures/continuum-attention-architecture.png" alt="Transformer neural operator architecture: an input function and coordinates are lifted, processed by repeated attention encoder layers, and projected to an output function." caption="**Figure 6.** An implemented operator architecture with attention acting on feature functions. Source: [Calvello et al., Figure 1](https://www.jmlr.org/papers/v26/24-0879.html), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)." >}}
+
+#### Example: mapping a Darcy coefficient field to its solution
+
+For a uniformly positive coefficient \(a(x)\), consider
+
+$$
+-\nabla\cdot(a(x)\nabla u(x))=1
+\quad\text{in }(0,1)^2,
+\qquad u|_{\partial\Omega}=0.
+$$
+
+The operator takes an input coefficient function to an output solution function. Figure 7 shows two inputs and their corresponding predicted solutions, produced with the same model. Its columns show the input visualization, reference solution, prediction, and pointwise absolute error on a logarithmic scale. The two rows are the test samples with median and maximum relative \(L^2\) error.
+
+{{< figure src="figures/continuum-attention-darcy.png" link="figures/continuum-attention-darcy.png" alt="Darcy operator-learning examples with input fields, reference solutions, predictions, and log-scale pointwise error for the median and maximum relative-error samples." caption="**Figure 7.** Darcy predictions from the Fourier attention neural operator variant in the continuum-attention paper. These are experiments from a separate 2025 operator-learning source, rather than numerical results of the parabolic approximation theorem. Source: [Calvello et al., Figure 12](https://www.jmlr.org/papers/v26/24-0879.html), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)." >}}
+
+The example uses the paper's Fourier attention variant, which modifies the attention parameterization. It illustrates an implemented solution map; the Picard theorem above concerns a different, semilinear parabolic family. The theoretical construction and the numerical example answer complementary questions about operator learning ([Sections 4 and 6.2.2](https://www.jmlr.org/papers/volume26/24-0879/24-0879.pdf)).
+
+Random inputs \(a\sim\rho\) induce a solution law \(\mathcal S_\#\rho\). When observations leave several fields possible, we may instead want to learn a conditional law directly. This brings us to functional transport learning.
+
+### Functional transport learning: generating solution distributions {#functional-flow-matching}
 
 Suppose we have samples of functions: solution fields from a simulator, for example. We want to generate new functions from the same distribution. FFM starts with a reference distribution of random functions and learns a velocity that transports it toward the data distribution.
 
-Figure 6 illustrates one conditional path. Each blue curve is a complete function. As generative time advances, the curve moves from noise toward a target function; the arrows show the required functional velocity. We will construct such paths first, then see how their velocities give a training objective.
+Figure 8 illustrates one conditional path. Each blue curve is a complete function. As generative time advances, the curve moves from noise toward a target function; the arrows show the required functional velocity. We will construct such paths first, then see how their velocities give a training objective.
 
-{{< figure src="figures/ffm-function-flow.png" link="figures/ffm-function-flow.png" alt="Four stages of a noisy function evolving toward a sine curve, with arrows showing its function-space velocity." caption="**Figure 6.** A conditional function-space path from a noisy function toward a target curve. Arrows indicate its functional velocity. Source: [Kerrigan et al., Figure 1](https://arxiv.org/abs/2305.17209v2)." >}}
+{{< figure src="figures/ffm-function-flow.png" link="figures/ffm-function-flow.png" alt="Four stages of a noisy function evolving toward a sine curve, with arrows showing its function-space velocity." caption="**Figure 8.** A conditional function-space path from a noisy function toward a target curve. Arrows indicate its functional velocity. Source: [Kerrigan et al., Figure 1](https://arxiv.org/abs/2305.17209v2)." >}}
 
-### Constructing a path between noise and a function
+#### Constructing a path between noise and a function
 
 Draw a target function \(f\sim\nu\) and an independent Gaussian random function \(\xi\sim\mathcal N(0,C)\). Choose \(0 < \sigma_{\min} < 1\). One construction in [Kerrigan et al., Section 4](https://proceedings.mlr.press/v238/kerrigan24a.html) is
 
@@ -359,7 +452,7 @@ $$
 
 The positive \(\sigma_{\min}\) leaves a smoothed target law at the endpoint.
 
-### Learning the velocity
+#### Learning the velocity
 
 Different pairs \((f,\xi)\) can lead to the same intermediate function. A learned velocity \(v_\theta(\tau,u)\) sees that intermediate function and generative time, rather than the particular pair used to construct it.
 
@@ -386,7 +479,7 @@ $$
 
 If \(\Phi_\tau\) denotes the resulting flow map, then the evolved distribution is \(\mu_\tau=(\Phi_\tau)_\#\mu_0\): draw from the initial law and apply the map. Training uses directly sampled paths; generation uses an ODE solver. The transport interpretation requires the flow and measure assumptions developed in [Kerrigan et al., Sections 3–4](https://proceedings.mlr.press/v238/kerrigan24a.html), discussed further in Appendix C.
 
-### Choosing a random function
+#### Choosing a random function
 
 The covariance \(C\) above is part of the model. To see its role, expand the random function in orthonormal modes \(e_j\), with \(Ce_j=\lambda_j e_j\):
 
@@ -401,6 +494,29 @@ A positive trace-class covariance, \(\sum_j\lambda_j<\infty\), gives an \(H\)-va
 
 This makes source design a physical question: which modes should carry uncertainty, and how should their amplitudes decay as we increase resolution?
 
+#### Example: generating Navier–Stokes fields
+
+The FFM paper tests generation of \(64\times64\) Navier–Stokes fields using an FNO velocity model. Figure 9 compares independent data and generated samples, together with errors in density and spectral statistics. This is a distribution-learning experiment: the generated panels are new draws, rather than predictions paired with particular ground-truth fields.
+
+{{< figure src="figures/ffm-navier-stokes-samples.png" link="figures/ffm-navier-stokes-samples.png" alt="Independent Navier–Stokes field samples from the dataset, FFM, DDPM, DDO, and GANO, with a table comparing density and spectrum errors." caption="**Figure 9.** Samples and distributional diagnostics in the FFM Navier–Stokes experiment. Matching a collection of field statistics differs from solving an individual initial-value problem. Source: [Kerrigan et al., Figure 2 and Table 2a](https://proceedings.mlr.press/v238/kerrigan24a.html)." >}}
+
+The generative ODE advances \(\tau\), not the fluid's physical time. The experiment supports an empirical comparison of field distributions; it does not establish that each generated field satisfies a specified PDE trajectory.
+
+#### Example: conditioning a function law on observations
+
+The same transport idea can use side information \(c\). Draw training functions from the conditional data law and fit
+
+$$
+\mathcal J_{\rm cond}(\theta)
+=\mathbb E\|v_\theta(\tau,u_\tau;c)-w_\tau\|_H^2.
+$$
+
+The population target becomes \(\mathbb E[w_\tau\mid\tau,u_\tau,c]\). Figure 10 illustrates this on the paper's AEMET temperature curves. Several generated curves share the conditioning information while varying elsewhere. This is a time-series example, separate from the Navier–Stokes experiment.
+
+{{< figure src="figures/ffm-conditional-functions.png" link="figures/ffm-conditional-functions.png" width="720" alt="Conditional FFM temperature curves: dark generated curves, pale data curves, and black observations, comparing conditional training with additional conditional sampling." caption="**Figure 10.** Conditional function generation on AEMET. The left column uses conditional training; the right additionally modifies sampling to enforce the observations. Source: [Kerrigan et al., Figure 5](https://proceedings.mlr.press/v238/kerrigan24a.html)." >}}
+
+Conditioning the learned velocity and enforcing observations during sampling are different mechanisms. The right column demonstrates the latter's effect; exact agreement at observed points does not by itself establish a correct posterior law ([Section 5 and Appendix A.4](https://proceedings.mlr.press/v238/kerrigan24a/kerrigan24a.pdf)). The paper's FNO implementation also uses uniform grids, so its continuum formulation should be distinguished from that numerical restriction.
+
 | | Functional gradient descent | Operator learning: the 2025 construction | Functional flow matching |
 | --- | --- | --- | --- |
 | Object | One function | A map between functions | A law over functions |
@@ -411,7 +527,11 @@ This makes source design a physical question: which modes should carry uncertain
 
 FGD obtains its velocity from an objective and an inner product. The operator construction obtains its blocks from a PDE integral equation. FFM obtains its velocity by regression against a probability path; that velocity need not be a gradient field. These supply three distinct learning objects, with shared questions about representation, approximation, and stability.
 
-## The building elements of functional learning
+## 4. Designing a functional PDE model
+
+With the three learning targets in place, we can choose the representation and computations that realize them. This section concerns the common design ingredients: physical operations, coordinate geometry, available updates, source laws, and numerical evaluation.
+
+### The shared building elements
 
 Consider a PDE task with known problem data \(a\): coefficients, forcing, domain, and initial or boundary conditions. We want to construct a solution function, a map across these problems, or a law of possible functions conditioned on \(a\). Before choosing a neural architecture, we can specify six elements.
 
@@ -426,15 +546,13 @@ Consider a PDE task with known problem data \(a\): coefficients, forcing, domain
 
 Here \(\mathcal O_h\) is an observation operator, \(\mathcal A_a\) is a physical or measurement model, and \(Q\) is a quantity such as drag or heat flux. The choice of \(H\) must support the required operations, possibly with additional regularity. For a probabilistic target, we must also specify a reference law and its covariance; the inner product alone does not determine a random function.
 
-An operator can predict a solution directly or construct it through iterations such as Figure 5. When we use a continuous evolution, its parameter \(r\) has a meaning supplied by the task. In FGD it is optimization time \(s\), with \(V=-\nabla_H\mathcal L\). In FFM it is generative time \(\tau\), with a learned velocity chosen to transport laws. An evolution PDE supplies a third possibility: physical time \(t\), with a velocity specified by the governing equation. Figure 7 separates these continuous motions from the coordinates used to implement them.
+An operator can predict a solution directly or construct it through iterations such as Figure 5. When we use a continuous evolution, its parameter \(r\) has a meaning supplied by the task. In FGD it is optimization time \(s\), with \(V=-\nabla_H\mathcal L\). In FFM it is generative time \(\tau\), with a learned velocity chosen to transport laws. An evolution PDE supplies a third possibility: physical time \(t\), with a velocity specified by the governing equation. Figure 11 separates these continuous motions from the coordinates used to implement them.
 
-{{< figure src="figures/functional-learning-elements.svg" link="figures/functional-learning-elements.svg" width="720" alt="A functional learning problem specifies a field, physical operations, geometry, and a target. Its motion can be optimization, physical evolution, or generative transport. A decoder and numerical solver realize the chosen motion in finite coordinates." caption="**Figure 7.** Different tasks supply different motions of a function. The decoder and numerical solver must realize the chosen motion and preserve the quantities the task needs. Original explanatory schematic, drawn in LaTeX/TikZ." >}}
+{{< figure src="figures/functional-learning-elements.svg" link="figures/functional-learning-elements.svg" width="720" alt="A functional learning problem specifies a field, physical operations, geometry, and a target. Its motion can be optimization, physical evolution, or generative transport. A decoder and numerical solver realize the chosen motion in finite coordinates." caption="**Figure 11.** Different tasks supply different motions of a function. The decoder and numerical solver must realize the chosen motion and preserve the quantities the task needs. Original explanatory schematic, drawn in LaTeX/TikZ." >}}
 
 This is what makes the functional viewpoint useful: the same field can be observed on several meshes, evaluated by a physical operator, optimized, or sampled from a law. Each operation has requirements that can be stated before we settle on its coordinates. A continuous decoder is one ingredient; the rest of the learning problem must respect the function it describes.
 
-## What latent dynamics do to a function
-
-### The geometry induced by a decoder
+### Geometry induced by the representation
 
 Let \(u=D(z)\), with differentiable \(D:\mathbb R^m\to H\). A small code change \(\delta z\) produces the first-order field change \(D'(z)\delta z\). The decoder derivative therefore determines both which directions are available and how large they are in the function norm.
 
@@ -478,9 +596,7 @@ This is the familiar Gram matrix of the basis. Overlapping basis functions creat
 
 Noise is affected by the same geometry. Centered Gaussian coefficients with covariance \(Q\) have expected squared field norm \(\operatorname{tr}(GQ)\). Unit code variance therefore need not mean equal variance in physical field directions. These identities explain what a decoder changes; whether accounting for them improves a trained model is an empirical question.
 
-A controlled comparison can start with this linear dictionary, where the metric and projected velocity are known exactly, then move to nonlinear decoders. Compare Euclidean and induced-metric updates through field error, derivative error, conditioning, and computational cost.
-
-### Decoding a flow of codes
+### Representing fields and their update directions
 
 If the code follows \(\dot z=b_\tau(z)\), then
 
@@ -491,23 +607,68 @@ $$
 
 where \(\nu_\tau\) is its code law. With a locally invertible chart on the represented family, this identifies a field velocity. If several codes represent the same field, their decoded velocities must agree for a single-valued deterministic field dynamics to be defined. Otherwise the code carries extra state beyond the function.
 
-A decoder can reconstruct the endpoint fields well while giving poor tangent directions between them. Reconstruction error and velocity approximation consequently measure different aspects of the representation. This distinction will matter when we consider adaptation.
+A decoder can reconstruct the endpoint fields well while giving poor tangent directions between them. Reconstruction error and velocity approximation consequently measure different aspects of the representation. The tangent directions are part of what must be assessed when the representation is used for dynamics.
 
-## Why PDE learning needs a functional interface
+#### Directions available to the dynamics
 
-The building elements become practical when we work with simulation data. A solver stores arrays on a mesh, but the PDE and the quantities we care about act on fields. Functional learning supplies a common interface between these two levels.
-
-[FunDiff](https://doi.org/10.1038/s41467-026-72292-0) learns a function representation and then a generative model of its latent codes. Its construction brings together three reasons for using this representation: data sampled at different resolutions, physical operations on the decoded function, and a common field description across tasks.
-
-### Training across resolutions
-
-Suppose one simulation stores a field on a \(64\times64\) mesh and another uses \(128\times128\). Their arrays have different sizes, but both sample a function on the physical domain. Write
+Let \(\mathcal M_m=D_m(Z_m)\) be a represented family, with a well-defined tangent space at \(u\). A measure of missing dynamics is
 
 $$
-y_i=\mathcal O_i u_i+\varepsilon_i.
+\eta_m(\tau,u)
+=\|(I-\Pi_{T_u\mathcal M_m})v_\tau(u)\|_H.
 $$
 
-Here \(\mathcal O_i\) records the sampling rule, such as point values or cell averages, and \(\varepsilon_i\) is observation error. For point values, choose a function space \(U\) with enough regularity to define evaluation; arbitrary \(L^2\) equivalence classes do not supply point values.
+The quantity \(\eta_m\) measures the velocity lost by projecting onto the available tangent directions. It can be large even when the current field itself is reconstructed well.
+
+This is related to [dynamical low-rank approximation](https://doi.org/10.1137/050639703), which projects derivatives onto the tangent space of a moving approximation manifold. For a transport model, the projected velocity must also be assessed through its effect on the generated distribution.
+
+FGD has a computable error test in its analyzed settings. For a learned transport, the exact population velocity is usually unavailable. A richer model, hierarchical detail modes, or an analytic reference problem can estimate missing directions, but disagreement alone is not a certified error bound.
+
+If the decoder itself changes continuously with generative time, the chain rule also requires
+
+$$
+\frac{du_\tau}{d\tau}
+=\partial_\tau D_\tau(z_\tau)
++D_\tau'(z_\tau)\dot z_\tau.
+$$
+
+The first term is motion caused by the changing decoder itself. It must be included in the intended field velocity.
+
+#### Function autoencoders and physical structure
+
+FunDiff also uses physical structure in the representation itself. For a sufficiently smooth two-dimensional streamfunction \(\psi\), define
+
+$$
+\mathbf v=(\partial_y\psi,-\partial_x\psi),
+\qquad\nabla\cdot\mathbf v=0,
+$$
+
+The two mixed derivatives cancel, so this velocity is divergence-free by construction. A residual penalty takes another route: it penalizes violations at the points and with the weights used in the loss.
+
+Figure 12 shows the FunDiff pipeline in the preprint. A Vision Transformer processes the sampled inputs, and a Perceiver encoder handles variable discretizations and maps them into a common latent representation. The decoder uses cross-attention between query coordinates and encoded features to evaluate the function. Physical constraints enter this function autoencoder through its architecture or training loss.
+
+The second stage trains a Diffusion Transformer using rectified flow on the learned latent representation. Generation integrates a latent ODE from Gaussian noise and decodes its output into a function. Thus physical-prior enforcement is carried by the autoencoder and is decoupled from the generative model's training and inference.
+
+{{< figure src="figures/fundiff-framework.png" link="figures/fundiff-framework.png" alt="FunDiff architecture: an encoder and coordinate-query decoder with physical priors, followed by latent diffusion training and inference for several field-reconstruction tasks." caption="**Figure 12.** FunDiff combines a function encoder and coordinate decoder, physical priors, and latent generation. Complete original diagram. Source: [Wang et al., Figure 1, preprint v2](https://arxiv.org/abs/2506.07902v2), [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/)." >}}
+
+We must also decide when a constraint should hold. For a linear constraint \(Au=0\), a source in its kernel and a velocity satisfying \(Av=0\) preserve the constraint along a sufficiently regular path. For a nonlinear constraint \(\mathcal C(u)=0\), the velocity must be tangent: \(D\mathcal C(u)[v]=0\). Requiring physical validity at every generative time restricts the source and path more strongly than requiring it only of final samples.
+
+### Reference laws, transport paths, and numerical computation
+
+| What adapts | Purpose | What must be checked |
+| --- | --- | --- |
+| Source covariance | Align stochastic scales with the field geometry | The continuum law and transport regularity |
+| Interpolation schedule | Allocate generative time across scales | Endpoint law and integration error |
+| Representation | Add or move directions available to the dynamics | Velocity defect, transfer error, and new-mode law |
+| Solver step size | Integrate a given represented velocity accurately | Local and accumulated numerical error |
+
+[Scale-Adaptive Generative Flows](https://arxiv.org/abs/2509.02971v2) studies the source-spectrum and interpolation-schedule choices. Their effect is visible in Figure 13. For the Gaussian-field experiment shown, a spectrum-matched source tracks the target spectrum with five RK4 steps. The white-source curves retain excess energy at finer frequencies at the displayed integration budgets, across the three resolutions.
+
+{{< figure src="figures/scale-adaptive-spectra.png" link="figures/scale-adaptive-spectra.png" alt="Energy spectra at 32 by 32, 64 by 64, and 128 by 128 resolutions, comparing target Gaussian fields with generated fields using spectrum-matched or white noise and different integration budgets." caption="**Figure 13.** Gaussian-field energy spectra at 32², 64², and 128² resolution, comparing spectrum-matched and white sources at the displayed RK4 budgets. Source: [Chen and Vanden-Eijnden, Figure 2](https://arxiv.org/abs/2509.02971v2)." >}}
+
+[Adaptive Flow Matching for Resolving Small-Scale Physics](https://proceedings.mlr.press/v267/fotiadis25a.html) uses an encoded base distribution and adaptive noise scaling. Representation refinement changes which directions are available to the velocity at a given time; its algorithmic design is developed in the Outlook. Source covariance, interpolation, representation, and solver steps can each affect accuracy and cost, through the different mechanisms in the table.
+
+#### Numerical observations and function-space losses
 
 A numerical encoder \(E_h\) converts the samples at resolution \(h\) into a code. The decoder turns that code back into a function. Given two samplings of the same field, compare
 
@@ -527,275 +688,13 @@ $$
 
 The quadrature weights \(w_j\) connect the finite loss to a continuum norm. On a nonuniform mesh, an unweighted sum gives more influence to densely sampled regions. A function-space objective specifies the measure we intend to approximate.
 
-The papers implement this connection differently. FunDiff uses random downsampling in flow-reconstruction training. [Autoencoders in Function Space](https://www.jmlr.org/papers/v26/25-0035.html) pairs function-space objectives with mesh-flexible encoders and decoders. CORAL obtains codes by fitting a coordinate-based representation to observations, as in Figure 1.
+The encoder, loss, and solver all approximate operations on functions. Their numerical errors belong in the accuracy budget alongside the learned model. The next section connects these errors to physical outputs and solution laws.
 
-Evaluating at more coordinates samples the learned function more finely. Recovering finer physical features additionally requires the representation and data to identify them. The function-autoencoder paper discusses this distinction in its superresolution analysis. Changing the domain geometry or numerical fidelity brings further changes beyond the sampling layout.
+## 5. What controls accuracy and reliability?
 
-### Computing derivatives and physical quantities
+We now ask when finite representations and learned dynamics approximate the intended functional objects. Physical stability connects errors to PDE solutions, while approximation and transport estimates connect them to laws. The construction below develops the accompanying theory draft. Projection, conditional regression, and stability supply standard ingredients; the source-conditioning comparison remains a proof draft whose independent review and priority are open.
 
-Once we have a smooth coordinate decoder \(u_z(x)=D(z)(x)\), automatic differentiation gives its derivatives. This lets a PDE residual act on the decoded function.
-
-FunDiff also uses physical structure in the representation itself. For a sufficiently smooth two-dimensional streamfunction \(\psi\), define
-
-$$
-\mathbf v=(\partial_y\psi,-\partial_x\psi),
-\qquad\nabla\cdot\mathbf v=0,
-$$
-
-The two mixed derivatives cancel, so this velocity is divergence-free by construction. A residual penalty takes another route: it penalizes violations at the points and with the weights used in the loss.
-
-Figure 8 shows the FunDiff pipeline in the preprint. A Vision Transformer processes the sampled inputs, and a Perceiver encoder handles variable discretizations and maps them into a common latent representation. The decoder uses cross-attention between query coordinates and encoded features to evaluate the function. Physical constraints enter this function autoencoder through its architecture or training loss.
-
-The second stage trains a Diffusion Transformer using rectified flow on the learned latent representation. Generation integrates a latent ODE from Gaussian noise and decodes its output into a function. Thus physical-prior enforcement is carried by the autoencoder and is decoupled from the generative model's training and inference.
-
-{{< figure src="figures/fundiff-framework.png" link="figures/fundiff-framework.png" alt="FunDiff architecture: an encoder and coordinate-query decoder with physical priors, followed by latent diffusion training and inference for several field-reconstruction tasks." caption="**Figure 8.** FunDiff combines a function encoder and coordinate decoder, physical priors, and latent generation. Complete original diagram. Source: [Wang et al., Figure 1, preprint v2](https://arxiv.org/abs/2506.07902v2), [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/)." >}}
-
-The remaining issue is derivative accuracy. A decoder can approximate field values closely while having inaccurate derivatives. On \((0,2\pi)\), take the error function
-
-$$
-e_n(x)=\frac{\sin(nx)}n.
-$$
-
-Its norms are
-
-$$
-\|e_n\|_{L^2}=\frac{\sqrt\pi}{n},
-\qquad
-\|e_n'\|_{L^2}=\sqrt\pi,
-\qquad
-\|e_n''\|_{L^2}=n\sqrt\pi.
-$$
-
-The field error vanishes, the first-derivative error stays constant, and the second-derivative error grows. A PDE containing second derivatives would therefore need more than an \(L^2\) reconstruction criterion. Sobolev norms measure derivative errors directly; task-specific estimates can target the physical quantities we need. For shocks and interfaces, weak formulations may be more appropriate than high-order pointwise differentiation.
-
-### Reusing the field across tasks
-
-The same decoded function can serve several tasks, each with its own additional model:
-
-| Task | What must be added to the representation |
-| --- | --- |
-| Reconstruction and denoising | An observation model and prior information |
-| Forward PDE prediction | A map from problem data to solution fields |
-| Physical forecasting | A dynamics model and time integration |
-| Inverse inference | A likelihood or conditioning model and uncertainty assessment |
-| Derived quantities | A functional such as an integral, flux, or gradient |
-
-For example, [DINo](https://arxiv.org/abs/2209.14855) adds latent ODE dynamics to forecast the field in physical time. [GeoFunFlow](https://arxiv.org/abs/2509.24117) adds geometry-aware conditioning for posterior field generation. These models use a functional representation while supplying different dynamics and inference mechanisms; the task determines the needed trained components.
-
-The relationship to downstream accuracy can be stated simply. If \(Q\) is \(L_Q\)-Lipschitz in the chosen space \(U\), then
-
-$$
-\|Q(\widehat u)-Q(u)\|
-\leq L_Q\|\widehat u-u\|_U.
-$$
-
-The norm has to support the task. Differentiation is unbounded on \(L^2\), as the example above illustrates. For a derivative-based quantity \(Q\), we need a stronger norm or a separate error estimate. The benefit of the functional interface is that we can state these requirements on the field, independently of the mesh on which we inspect it.
-
-These three demands explain when the functional view becomes important. Changing resolution asks for consistency of the reconstructed field; applying physics asks for accuracy of its operations; changing tasks asks for a common field on which new objectives or dynamics can act. A fixed-grid predictor can still be effective for a fixed-grid task. The broader demands require us to account for the underlying functions, whatever numerical architecture we use.
-
-## Learning how a solution should change
-
-### From a solution map to a learned correction
-
-A [neural operator](https://jmlr.org/papers/v24/21-1524.html) learns a solution map \(\mathcal S:a\mapsto u\) between function spaces. This addresses a family of PDE problems: changing the coefficient field or initial data changes the output function. CORAL's code processor in Figure 1 is one realization of this input-to-output structure. The 2025 Picard construction gives another: approximate a stable solution procedure with shared operator blocks, as in Figure 5.
-
-FGD suggests a complementary object to learn: an update of the current solution. We could use a learned solution map for initialization and then refine the field:
-
-$$
-u^{(0)}=\mathcal S_\theta(a),
-\qquad
-\frac{du_s}{ds}=V_\theta(u_s;a).
-$$
-
-This is a proposed solver design. Its update might approximate a functional gradient, a preconditioned residual correction, or another justified numerical step. A gradient approximation can inherit a descent guarantee only when the geometry, error tolerance, and step conditions needed by that guarantee hold. Small PDE residuals also need a problem-specific stability estimate before they imply small solution errors.
-
-The interesting question is whether learning the update transfers better across a family of problems than learning only their endpoints. Can the same correction act on different mesh samplings or improve an imperfect initial prediction? The comparison should measure physical quantities and total cost at matched solution accuracy, including the correction steps.
-
-### When the PDE supplies the velocity
-
-For an evolution equation,
-
-$$
-\partial_tu=\mathcal F_a(u),
-$$
-
-the desired motion is already known. Restricting \(u\) to a differentiable representation \(D(z)\) gives the least-squares problem
-
-$$
-\dot z=\arg\min_b
-\|D'(z)b-\mathcal F_a(D(z))\|_H^2.
-$$
-
-[Neural Galerkin](https://arxiv.org/abs/2203.01360) realizes this principle with a neural function ansatz. Its parameter evolution follows a Gram-matrix system obtained from the PDE residual; active sampling helps estimate the required integrals. The approximation now tracks the governing motion in physical time. FGD's wave example instead optimizes a whole space-time function.
-
-This gives us three sources of functional dynamics: an objective supplies an optimization velocity, a PDE supplies a physical velocity, and a probability path supplies a generative velocity. A latent model can implement any of them, provided its decoded motion approximates the intended one.
-
-### Representations that can express the next update
-
-Suppose an autoencoder reconstructs every training snapshot well. That does not establish that its tangent directions can express the PDE velocity or a useful correction. A representation trained for a solver might therefore include both kinds of error:
-
-$$
-\mathbb E\left[
-\|D(E(u))-u\|_H^2
-+\gamma\inf_b
-\|D'(E(u))b-V(u;a)\|_H^2
-\right].
-$$
-
-This illustrative objective asks the representation to capture states and their required changes. The weight \(\gamma\) must account for units and scaling; the velocity must be available or estimated. Constraints such as boundary conditions may need to be built into the represented family as well.
-
-The question becomes concrete: **can a representation with similar reconstruction error support more accurate or cheaper functional updates?** This connects representation learning to solver design, and sets up the adaptive question later.
-
-## From finding a solution to learning a law
-
-Inverse PDE and rendering problems often admit several fields consistent with the data. Functional optimization can find a candidate; functional transport can aim to describe their uncertainty. To connect them, we need to decide what probabilities the candidates should have.
-
-### Descent already transports an ensemble
-
-Initialize a random function and apply functional gradient flow to each realization. Under sufficient regularity, its law moves according to the same weak continuity equation as any other deterministic transport. Moreover,
-
-$$
-\frac{d}{ds}\mathbb E_{u\sim\mu_s}\mathcal L(u)
-=-\mathbb E_{u\sim\mu_s}\|\nabla_H\mathcal L(u)\|_H^2.
-$$
-
-The ensemble's expected loss decreases. Its eventual distribution depends on the initial law and the attraction basins of the objective. If several solutions fit the observations, random initialization followed by optimization does not prescribe their relative probabilities.
-
-### A physical objective can define a target law
-
-One possible next step is to choose a reference law \(\mu_0\) and define
-
-$$
-\frac{d\pi_\beta}{d\mu_0}(u)
-=Z_\beta^{-1}\exp[-\beta\mathcal L(u)].
-$$
-
-Assume the objective is measurable and \(0 < Z_\beta < \infty\). The reference law specifies the starting notion of plausible functions; the objective favors functions that fit the physical task. The scale \(\beta\) controls the strength of this preference. When the objective is a properly specified negative log likelihood, this has a Bayesian interpretation; an arbitrary residual penalty is a modeling choice. Densities are taken relative to a function-space reference measure, as in [Stuart's Bayesian formulation](https://doi.org/10.1017/S0962492910000061).
-
-A transport model would seek \(T_\#\mu_0\approx\pi_\beta\). This supplies a distributional target for a PDE or rendering problem. Learning the transport requires target samples, as in ordinary sample-based flow matching, or another justified procedure for learning from the objective.
-
-For inverse PDE inference, the unknown function might be a coefficient field whose forward solution must match observations. For inverse rendering, it might describe density and color whose rendered images must match photographs. The operator and the likelihood change; the construction still concerns a law over possible functions.
-
-An appealing shortcut is to add a physical correction to an already trained generative velocity:
-
-$$
-v_\tau^{\mathrm{guided}}(u)
-=v_\tau(u)-\lambda_\tau\nabla_H\mathcal L(u).
-$$
-
-This changes the transport and generally changes its endpoint law. It is a new sampling model whose target must be justified or evaluated. A more deliberate connection would specify the desired law first, then design or learn a velocity for it. The open question is how physical information can help learn that transport without losing the uncertainty we intended to represent.
-
-Function-space Bayesian inversion and [functional normalizing flows](https://arxiv.org/abs/2411.13277) provide foundations for learning such transports. An analytically known target law would let us compare a descent ensemble with a sampler directly, checking their distributions as well as their losses.
-
-### Transporting residual functions
-
-| Intended result | Role of the physical model | What success means |
-| --- | --- | --- |
-| One solution | Define a residual or variational objective | Small solution error under suitable stability estimates |
-| A distribution of solutions | Define a target law or reweight a reference law | Correct distribution as well as physical consistency |
-| Improved approximate solutions | Define corrections between coarse and fine field laws | Reduced error and a preserved target distribution |
-
-[Residual-augmented flow matching operators](https://arxiv.org/abs/2512.12749v3) uses the third route. A low-fidelity solver first predicts a field. The generative model learns a distribution of residual functions conditioned on that prediction and the problem input; adding a residual gives a corrected field.
-
-In Figure 9, the upper branch supplies the low-fidelity context. The lower branch transports a Gaussian reference to residual functions. This changes what the generative model must produce: the uncertainty and structure of the correction, rather than the entire field.
-
-{{< figure src="figures/residual-function-transport.png" link="figures/residual-function-transport.png" alt="A low-fidelity PDE solution conditions a functional flow that transports a Gaussian reference toward a distribution of residual functions, which correct the low-fidelity solution." caption="**Figure 9.** A Gaussian reference is transported to residual functions, conditioned on the problem input and a low-fidelity prediction. Source: [Bhola and Duraisamy, Figure 1](https://arxiv.org/abs/2512.12749v3), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)." >}}
-
-Distributional accuracy and physical accuracy remain separate objectives. [Physics vs Distributions](https://arxiv.org/abs/2506.08604v3) studies their tension explicitly. A model can reduce a PDE residual while changing the distribution it was meant to reproduce.
-
-We must also decide when a constraint should hold. For a linear constraint \(Au=0\), a source in its kernel and a velocity satisfying \(Av=0\) preserve the constraint along a sufficiently regular path. For a nonlinear constraint \(\mathcal C(u)=0\), the velocity must be tangent: \(D\mathcal C(u)[v]=0\). Requiring physical validity at every generative time restricts the source and path more strongly than requiring it only of final samples.
-
-## Transporting with an adaptive representation
-
-Some parts of a field need more degrees of freedom than others, and the required detail can change along a trajectory. Adaptive FGD refines a representation when it cannot approximate the required gradient accurately enough. Could a functional transport introduce detail when its motion requires it, rather than paying for the finest representation throughout? This section develops that research question.
-
-### Adapt the velocity as well as the field
-
-Let \(\mathcal M_m=D_m(Z_m)\) be a represented family, with a well-defined tangent space at \(u\). A natural measure of missing dynamics is
-
-$$
-\eta_m(\tau,u)
-=\|(I-\Pi_{T_u\mathcal M_m})v_\tau(u)\|_H.
-$$
-
-The quantity \(\eta_m\) measures the velocity lost by projecting onto the available tangent directions. It can be large even when the current field itself is reconstructed well.
-
-This is related to [dynamical low-rank approximation](https://doi.org/10.1137/050639703), which projects derivatives onto the tangent space of a moving approximation manifold. For learned transport, the additional question is how this projection changes the generated distribution.
-
-FGD has a computable error test in its analyzed settings. For a learned transport, the exact population velocity is usually unavailable. A richer model, hierarchical detail modes, or an analytic reference problem can estimate missing directions, but disagreement alone is not a certified error bound.
-
-### Deciding when to refine
-
-For descent, we can ask whether an approximate gradient still reduces the loss. For generation, the quantity we ultimately care about is the error in the endpoint law.
-
-A direct stability calculation separates three contributions: error in the initial functions, accumulated velocity error, and jumps caused by changing representations. The flow's sensitivity amplifies these errors. Appendix D gives the Grönwall bound under a globally state-Lipschitz reference velocity and finite-second-moment assumptions.
-
-This suggests refining where the remaining contribution to endpoint error is large. Velocity-learning error, tangent-projection error, and numerical integration error should be measured separately. A relative velocity tolerance also needs an absolute tolerance near zero velocity. The generative path has no requirement to reduce a scalar objective at every step.
-
-### Changing coordinates must preserve the sample and its law
-
-A transfer \(R_m^{m'}\) between representations should first aim to preserve the existing field:
-
-$$
-D_{m'}(R_m^{m'}z)\approx D_m(z).
-$$
-
-This controls the change in an existing sample. There is a second issue: how to populate the newly introduced random directions.
-
-Take a two-mode field \(U=Xe_1+Ye_2\), with orthonormal \(e_1,e_2\). A coarse representation stores only \(X\). Lifting it to \((X,0)\) preserves the coarse field exactly, but gives the second mode zero variance. If the desired fine law satisfies
-
-$$
-Y=\rho X+\sigma\epsilon,
-\qquad \epsilon\sim\mathcal N(0,1)
-$$
-
-with \(\epsilon\) independent of \(X\), the new coefficient must instead be drawn from \(Y\mid X\sim\mathcal N(\rho X,\sigma^2)\). Adding independent noise would miss the correlation when \(\rho\ne0\). During a generative flow, it is the conditional law at the refinement time that matters.
-
-A deterministic smooth lift therefore does not generally recover a full fine-dimensional law. One possible design keeps a common fine-scale random seed and reveals its modes progressively. Their distribution must be consistent with the current transport marginal, and the coarse dynamics must account for their effects.
-
-For fixed orthogonal projection \(P_m\), the projected marginal of an exact fine flow has the formal effective velocity
-
-$$
-\bar v_m(\tau,w)
-=\mathbb E[P_mv_\tau(U_\tau)\mid P_mU_\tau=w],
-$$
-
-under suitable integrability, where \(w\) is a resolved field state. This need not equal \(P_mv_\tau(w)\). Unresolved modes can influence resolved motion. Consequently, removing modes, learning their average effect, and later restoring them is a closure problem as well as a representation problem.
-
-If the decoder itself changes continuously with generative time, the chain rule also requires
-
-$$
-\frac{du_\tau}{d\tau}
-=\partial_\tau D_\tau(z_\tau)
-+D_\tau'(z_\tau)\dot z_\tau.
-$$
-
-The first term is motion caused by the changing decoder itself. It must be included in the intended field velocity.
-
-A tractable starting experiment would use fixed nested spaces and known field velocities. Compare adaptive refinement with a fixed fine representation at matched endpoint accuracy and total cost, separating projection, transfer, and integration errors. Learned velocities and a moving basis can then be studied once the transfer and marginal-consistency questions are understood.
-
-### Source spectra, paths, and representations
-
-| What adapts | Purpose | What must be checked |
-| --- | --- | --- |
-| Source covariance | Align stochastic scales with the field geometry | The continuum law and transport regularity |
-| Interpolation schedule | Allocate generative time across scales | Endpoint law and integration error |
-| Representation | Add or move directions available to the dynamics | Velocity defect, transfer error, and new-mode law |
-| Solver step size | Integrate a given represented velocity accurately | Local and accumulated numerical error |
-
-[Scale-Adaptive Generative Flows](https://arxiv.org/abs/2509.02971v2) studies the source-spectrum and interpolation-schedule choices. Their effect is visible in Figure 10. For the Gaussian-field experiment shown, a spectrum-matched source tracks the target spectrum with five RK4 steps. The white-source curves retain excess energy at finer frequencies at the displayed integration budgets, across the three resolutions.
-
-{{< figure src="figures/scale-adaptive-spectra.png" link="figures/scale-adaptive-spectra.png" alt="Energy spectra at 32 by 32, 64 by 64, and 128 by 128 resolutions, comparing target Gaussian fields with generated fields using spectrum-matched or white noise and different integration budgets." caption="**Figure 10.** Gaussian-field energy spectra at 32², 64², and 128² resolution, comparing spectrum-matched and white sources at the displayed RK4 budgets. Source: [Chen and Vanden-Eijnden, Figure 2](https://arxiv.org/abs/2509.02971v2)." >}}
-
-[Adaptive Flow Matching for Resolving Small-Scale Physics](https://proceedings.mlr.press/v267/fotiadis25a.html) uses an encoded base distribution and adaptive noise scaling. Representation refinement adds another choice: which directions are available to the velocity at a given time. Source covariance, interpolation, representation, and solver steps can each affect accuracy and cost, through the different mechanisms in the table.
-
-These mechanisms raise a common theoretical question: can a sequence of finite models approach the intended solution or solution law while keeping its dynamics under control? Expressing a field, identifying it from measurements, learning its velocity, and integrating that velocity are different parts of the answer.
-
-## Building a theory of functional solution learning
-
-We can now assemble the argument from the object being learned to the error of the final computation. The construction below develops the accompanying theory draft. Projection, conditional regression, and stability supply standard ingredients; the source-conditioning comparison is a proof draft whose independent review and priority remain open. The aim here is to make the dependencies explicit.
-
-### Start with the operations that accuracy must control
+### Physical norms and PDE stability
 
 Suppose the solutions have one square-integrable spatial derivative. A possible physical space is \(H=H^1(\Omega;\mathbb R^c)\), with fixed channel scaling and a fixed length scale \(\ell>0\):
 
@@ -823,7 +722,7 @@ $$
 
 Together with FGD's descent estimate, this connects optimization progress to physical solution error. Strong monotonicity is a sufficient example, rather than an assumption shared by all PDEs. Nonunique or ill-conditioned inverse problems need a different stability statement, or a target law that retains their uncertainty.
 
-### Approximate the function before approximating its law
+### Representation error in fields and distributions
 
 Let \((e_j)\) be an orthonormal basis of a real separable Hilbert space \(H\). Define nested spaces \(H_m=\operatorname{span}\{e_1,\ldots,e_m\}\), orthogonal projections \(P_m\), and a decoder
 
@@ -865,7 +764,26 @@ $$
 
 Thus field reconstruction controls decoded-law approximation in that norm. It still does not establish the tangent accuracy needed by an evolving model.
 
-### Construct a regular transport to any prescribed accuracy
+#### Changing a representation and its law
+
+A transfer \(R_m^{m'}\) between representations should first aim to preserve the existing field:
+
+$$
+D_{m'}(R_m^{m'}z)\approx D_m(z).
+$$
+
+This controls the change in an existing sample. There is a second issue: how to populate the newly introduced random directions.
+
+Take a two-mode field \(U=Xe_1+Ye_2\), with orthonormal \(e_1,e_2\). A coarse representation stores only \(X\). Lifting it to \((X,0)\) preserves the coarse field exactly, but gives the second mode zero variance. If the desired fine law satisfies
+
+$$
+Y=\rho X+\sigma\epsilon,
+\qquad \epsilon\sim\mathcal N(0,1)
+$$
+
+with \(\epsilon\) independent of \(X\), the new coefficient must instead be drawn from \(Y\mid X\sim\mathcal N(\rho X,\sigma^2)\). Adding independent noise would miss the correlation when \(\rho\ne0\). During a generative flow, it is the conditional law at the refinement time that matters.
+
+### Constructing regular approximating transports
 
 The next question is whether the projected law can be generated by a regular flow. Choose **one source before choosing the target**:
 
@@ -908,7 +826,7 @@ For every finite-second-moment target and every positive tolerance, we can choos
 
 There is also a concrete neural realization: the posterior prototype probabilities are a softmax of affine measurements of the field. Their weighted sum, together with a known linear drift, implements the velocity. The construction establishes representability; learning those quantities from data remains a separate problem. In a nonorthogonal implementation, use the decoder's Gram matrix to preserve the stipulated \(H\) geometry.
 
-### Turn velocity-learning error into endpoint error
+### Learning error and numerical error
 
 Let \(v^*\) denote the population conditional velocity for this path, and let
 \(\widehat v\) be a learned velocity. Define its **population excess risk**
@@ -929,7 +847,7 @@ $$
 
 Here the Lipschitz constant belongs to the **learned velocity**: the regression error is measured along reference marginals, so we use learned-field stability to control movement away from them. Appendix G derives the bound. [Shikhman's August 2026 preprint, Theorem 23](https://arxiv.org/html/2608.04531v1), gives a related result using a superposition measure, without requiring a unique population ODE.
 
-Finally, let \(E_{\rm num}\) bound the Wasserstein difference between the numerical sampler and the exact learned ODE. Figure 11 organizes the resulting error budget:
+Finally, let \(E_{\rm num}\) bound the Wasserstein difference between the numerical sampler and the exact learned ODE. Figure 14 organizes the resulting error budget:
 
 $$
 \begin{aligned}
@@ -942,13 +860,15 @@ W_{2,H}(\widehat\mu_{\rm num},\mu)
 \end{aligned}
 $$
 
-{{< figure src="figures/functional-theory-error-chain.svg" link="figures/functional-theory-error-chain.svg" width="720" alt="A LaTeX diagram tracing a target function law through projection, prototype approximation, Gaussian smoothing, a learned flow, and numerical sampling. Each transition is labeled by its contribution to the physical Wasserstein error." caption="**Figure 11.** From a target law to a computed sample law: each approximation introduces an error measured in the same physical geometry. Original LaTeX/TikZ diagram. The learning term assumes a stable learned velocity and population excess risk." >}}
+{{< figure src="figures/functional-theory-error-chain.svg" link="figures/functional-theory-error-chain.svg" width="720" alt="A LaTeX diagram tracing a target function law through projection, prototype approximation, Gaussian smoothing, a learned flow, and numerical sampling. Each transition is labeled by its contribution to the physical Wasserstein error." caption="**Figure 14.** From a target law to a computed sample law: each approximation introduces an error measured in the same physical geometry. Original LaTeX/TikZ diagram. The learning term assumes a stable learned velocity and population excess risk." >}}
 
 The budget makes a consistency claim testable. Refinement must remove the representation floor; prototype and smoothing errors must vanish; learning must achieve \(e^{\widehat\Lambda}\sqrt{\mathcal E}\to0\); and integration error must vanish. A low empirical training loss alone establishes none of these limits. Statistical estimation, model approximation, and optimization determine the excess risk; solver accuracy determines the final term.
 
 The result also transfers to physical outputs: for an \(L_Q\)-Lipschitz observable, \(W_2(Q_\#\widehat\mu,Q_\#\mu)\le L_QW_{2,H}(\widehat\mu,\mu)\). With the Sobolev norm above, it controls gradient-law error in \(L^2\). PDE satisfaction and conservation still need their own operator assumptions.
 
-### Why source geometry enters the theory
+Changing representations introduces another numerical contribution. Appendix D separates initial error, accumulated velocity defect, and jumps in the represented function under a state-Lipschitz reference velocity. This is a different coupling estimate from the learned-field bound above. Any refinement rule must account for both the size of a transfer error and the remaining flow's sensitivity to it.
+
+### Source geometry and resolution dependence
 
 The exponential factor suggests asking whether regularity deteriorates as resolution grows. Broadly, approximation capability and conditioning are already known to be distinct in normalizing-flow theory; see [Koehler, Mehta, and Risteski](https://proceedings.mlr.press/v139/koehler21a.html) and [Verine et al.](https://proceedings.mlr.press/v189/verine23a.html). The latter's expressivity bounds use total variation, whereas the comparison below uses physical Wasserstein distance.
 
@@ -983,7 +903,7 @@ This generates \(\mu_M\) exactly, while its full-law error \(\delta_M\) tends to
 
 These comparisons concern regular invertible transports in a fixed physical norm. A known covariance-coloring layer can reproduce the functional source from finite white noise; a fair comparison must disclose whether its distortion lies inside the transport budget. Noninvertible decoders, dimension changes, and stochastic samplers require other arguments. Growing global distortion also does not prove slower training or more solver steps: a large, known contraction may be cheap to integrate.
 
-### What finite observations leave unresolved
+### Information lost through finite observations
 
 The construction above starts with full functions or their exact coefficients. Real training data provide \(Y=\mathcal O_hU+\xi\). Even an unlimited deterministic reconstructor has an information floor:
 
@@ -994,34 +914,169 @@ $$
 
 If two admissible fields have identical observations, querying a decoder more densely cannot identify which one was observed. A conditional generative model can instead represent their conditional law. That is a different target from exact recovery of each individual field.
 
-There is an analogous issue for velocities. The resolved regression target is
-\(\mathbb E[P_m w_\tau\mid P_mX_\tau]\), which averages over unresolved information. It need not equal a continuum velocity evaluated on a truncated field. This is the closure issue encountered in adaptive transport. [Shikhman's Theorem 13](https://arxiv.org/html/2608.04531v1) exhibits a Lipschitz continuum velocity whose finite conditional targets lack a uniform Lipschitz envelope; the example still has convergent flows. Uniform Grönwall bounds are therefore sufficient tools whose failure does not by itself prove failure of convergence.
+For fixed orthogonal projection \(P_m\), the projected marginal of an exact fine flow has the formal effective velocity
+
+$$
+\bar v_m(\tau,w)
+=\mathbb E[P_mv_\tau(U_\tau)\mid P_mU_\tau=w],
+$$
+
+under suitable integrability, where \(w\) is a resolved field state. This need not equal \(P_mv_\tau(w)\). Unresolved modes can influence resolved motion. Consequently, removing modes, learning their average effect, and later restoring them is a closure problem as well as a representation problem.
+
+There is an analogous issue for learned velocities. The resolved regression target is
+\(\mathbb E[P_m w_\tau\mid P_mX_\tau]\), which averages over unresolved information. It need not equal a continuum velocity evaluated on a truncated field. This is a closure issue: the resolved dynamics average over information that the coarse field does not retain. [Shikhman's Theorem 13](https://arxiv.org/html/2608.04531v1) exhibits a Lipschitz continuum velocity whose finite conditional targets lack a uniform Lipschitz envelope; the example still has convergent flows. Uniform Grönwall bounds are therefore sufficient tools whose failure does not by itself prove failure of convergence.
 
 The theory has now located the missing work precisely. We need observation consistency, approximation of the correct conditional velocity, control of learned dynamics, and accurate numerical realization. Functional learning makes these requirements refer to one common object. It gives a route from representation to PDE operations and solution laws; realizing that route requires checking each link.
 
-## Outlook
+## 6. Using the framework for PDE problems
 
-The examples began with three objects: FGD improves a function, operator learning shares a solution map across inputs, and FFM learns to sample a function law. The wider opportunity is to build PDE models whose coordinates support the physical operations, corrections, and uncertainty that the problem calls for. Four directions seem especially useful.
+The construction and accuracy conditions now have concrete uses. The following examples apply the three learning targets to prediction, physical evolution, inference, and correction. The proposed extensions are collected in the Outlook that follows.
 
-### Learn a solver whose correction has a physical meaning
+### Forward prediction and physical evolution
 
-A learned solution map can supply a good initial field; a functional correction can then respond to new boundary conditions, parameters, or measurements. The useful question is whether that correction preserves a descent or stability property and reduces solution error at a measured cost. FGD suggests controlling gradient approximation; the Picard construction suggests controlling each block's defect and its amplification by the reference solver; Neural Galerkin suggests controlling the part of the PDE velocity that the representation can express.
+For forward prediction, a neural operator returns a solution function from the problem data. CORAL's code processor and the operator examples in Section 3 realize this structure in different ways. A physical solver or functional optimization can then assess or refine a predicted field using the governing equation; the residual-to-solution estimate in Section 5 explains when a residual is informative.
 
-A first study could compare a frozen decoder with one trained on both states and update directions. Measure residuals, field and derivative errors, and correction cost. This would test whether a representation built for motion improves the solve beyond a representation built for reconstruction.
+Physical forecasting has a different time variable: it follows the evolution of the field itself. [DINo](https://arxiv.org/abs/2209.14855) learns latent ODE dynamics, while Neural Galerkin uses the governing PDE to determine the represented velocity.
 
-### Let the dynamics decide when the representation grows
+#### When the PDE supplies the velocity
 
-Adaptive transport could spend capacity where a velocity develops unresolved structure. The theory suggests a refinement criterion based on accumulated dynamical defect and endpoint sensitivity. For deterministic evolution, transfer must preserve the current function. For sampling, new directions also need the appropriate conditional distribution.
+For an evolution equation,
 
-Nested spaces with known velocities provide a clean first test. Then one can study learned local bases, moving decoders, or geometry-dependent coordinates. The central question is whether these choices reduce total cost at a fixed physical endpoint accuracy, while controlling representation jumps and the law of newly introduced modes.
+$$
+\partial_tu=\mathcal F_a(u),
+$$
 
-### Design uncertainty for the physical context
+the desired motion is already known. Restricting \(u\) to a differentiable representation \(D(z)\) gives the least-squares problem
+
+$$
+\dot z=\arg\min_b
+\|D'(z)b-\mathcal F_a(D(z))\|_H^2.
+$$
+
+[Neural Galerkin](https://arxiv.org/abs/2203.01360) realizes this principle with a neural function ansatz. Its parameter evolution follows a Gram-matrix system obtained from the PDE residual; active sampling helps estimate the required integrals. The approximation now tracks the governing motion in physical time. FGD's wave example instead optimizes a whole space-time function.
+
+This gives us three sources of functional dynamics: an objective supplies an optimization velocity, a PDE supplies a physical velocity, and a probability path supplies a generative velocity. A latent model can implement any of them, provided its decoded motion approximates the intended one.
+
+### Inverse inference and conditional field generation
+
+Inverse PDE and rendering problems often admit several fields consistent with the data. Functional optimization can find a candidate; functional transport can aim to describe their uncertainty. To connect them, we need to decide what probabilities the candidates should have.
+
+#### A descent ensemble and a specified target law
+
+Initialize a random function and apply functional gradient flow to each realization. Under sufficient regularity, its law moves according to the same weak continuity equation as any other deterministic transport. Moreover,
+
+$$
+\frac{d}{ds}\mathbb E_{u\sim\mu_s}\mathcal L(u)
+=-\mathbb E_{u\sim\mu_s}\|\nabla_H\mathcal L(u)\|_H^2.
+$$
+
+The ensemble's expected loss decreases. Its eventual distribution depends on the initial law and the attraction basins of the objective. If several solutions fit the observations, random initialization followed by optimization does not prescribe their relative probabilities.
+
+#### A reference measure and an observation likelihood
+
+Given a reference law \(\mu_0\), we can define
+
+$$
+\frac{d\pi_\beta}{d\mu_0}(u)
+=Z_\beta^{-1}\exp[-\beta\mathcal L(u)].
+$$
+
+Assume the objective is measurable and \(0 < Z_\beta < \infty\). The reference law specifies the starting notion of plausible functions; the objective favors functions that fit the physical task. The scale \(\beta\) controls the strength of this preference. When the objective is a properly specified negative log likelihood, this has a Bayesian interpretation; an arbitrary residual penalty is a modeling choice. Densities are taken relative to a function-space reference measure, as in [Stuart's Bayesian formulation](https://doi.org/10.1017/S0962492910000061).
+
+A transport model would seek \(T_\#\mu_0\approx\pi_\beta\). This supplies a distributional target for a PDE or rendering problem. Learning the transport requires target samples, as in ordinary sample-based flow matching, or another justified procedure for learning from the objective.
+
+For inverse PDE inference, the unknown function might be a coefficient field whose forward solution must match observations. For inverse rendering, it might describe density and color whose rendered images must match photographs. The operator and the likelihood change; the construction still concerns a law over possible functions.
+
+Function-space Bayesian inversion and [functional normalizing flows](https://arxiv.org/abs/2411.13277) provide foundations for learning such transports. The sampler must be assessed through its target distribution as well as the physical objective.
+
+[GeoFunFlow](https://arxiv.org/abs/2509.24117) combines a geometry-aware function representation with conditioning for posterior field generation. This supplies the inference mechanism needed in addition to a decoder. The conditional FFM curves in Section 3 illustrate why many field realizations can share observations; posterior assessment must also check the intended uncertainty.
+
+### Probabilistic correction of approximate solutions
+
+| Intended result | Role of the physical model | What success means |
+| --- | --- | --- |
+| One solution | Define a residual or variational objective | Small solution error under suitable stability estimates |
+| A distribution of solutions | Define a target law or reweight a reference law | Correct distribution as well as physical consistency |
+| Improved approximate solutions | Define corrections between coarse and fine field laws | Reduced error and a preserved target distribution |
+
+[Residual-augmented flow matching operators](https://arxiv.org/abs/2512.12749v3) uses the third route. A low-fidelity solver first predicts a field. The generative model learns a distribution of residual functions conditioned on that prediction and the problem input; adding a residual gives a corrected field.
+
+In Figure 15, the upper branch supplies the low-fidelity context. The lower branch transports a Gaussian reference to residual functions. This changes what the generative model must produce: the uncertainty and structure of the correction, rather than the entire field.
+
+{{< figure src="figures/residual-function-transport.png" link="figures/residual-function-transport.png" alt="A low-fidelity PDE solution conditions a functional flow that transports a Gaussian reference toward a distribution of residual functions, which correct the low-fidelity solution." caption="**Figure 15.** A Gaussian reference is transported to residual functions, conditioned on the problem input and a low-fidelity prediction. Source: [Bhola and Duraisamy, Figure 1](https://arxiv.org/abs/2512.12749v3), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)." >}}
+
+Distributional accuracy and physical accuracy remain separate objectives. [Physics vs Distributions](https://arxiv.org/abs/2506.08604v3) studies their tension explicitly. A model can reduce a PDE residual while changing the distribution it was meant to reproduce.
+
+## 7. Outlook
+
+The established examples show what the functional formulation lets us specify and compute. The remaining opportunity is to turn those mathematical requirements into effective learned algorithms. Four questions follow from the framework and its limits.
+
+### Learned corrections with solver guarantees
+
+FGD suggests a complementary object to learn: an update of the current solution. We could use a learned solution map for initialization and then refine the field:
+
+$$
+u^{(0)}=\mathcal S_\theta(a),
+\qquad
+\frac{du_s}{ds}=V_\theta(u_s;a).
+$$
+
+This is a proposed solver design. Its update might approximate a functional gradient, a preconditioned residual correction, or another justified numerical step. A gradient approximation can inherit a descent guarantee only when the geometry, error tolerance, and step conditions needed by that guarantee hold. Small PDE residuals also need a problem-specific stability estimate before they imply small solution errors.
+
+The interesting question is whether learning the update transfers better across a family of problems than learning only their endpoints. Can the same correction act on different mesh samplings or improve an imperfect initial prediction? The comparison should measure physical quantities and total cost at matched solution accuracy, including the correction steps.
+
+#### Training a representation for its required updates
+
+Suppose an autoencoder reconstructs every training snapshot well. That does not establish that its tangent directions can express the PDE velocity or a useful correction. A representation trained for a solver might therefore include both kinds of error:
+
+$$
+\mathbb E\left[
+\|D(E(u))-u\|_H^2
++\gamma\inf_b
+\|D'(E(u))b-V(u;a)\|_H^2
+\right].
+$$
+
+This illustrative objective asks the representation to capture states and their required changes. The weight \(\gamma\) must account for units and scaling; the velocity must be available or estimated. Constraints such as boundary conditions may need to be built into the represented family as well.
+
+The question becomes concrete: **can a representation with similar reconstruction error support more accurate or cheaper functional updates?** This connects representation learning to solver design, and motivates adaptive capacity when the required directions change.
+
+A controlled comparison can start with the linear dictionary from Section 4, where the metric and projected velocity are known exactly, then move to nonlinear decoders. Compare Euclidean and induced-metric updates through field error, derivative error, conditioning, and computational cost.
+
+A controlled study can compare a frozen decoder with one trained on both states and update directions. Measure field and derivative errors, residuals, descent or stability properties, and total correction cost at matched physical accuracy. The question is whether representing the required updates improves a solve beyond representing its snapshots.
+
+### Adaptive representations that preserve evolving laws
+
+The missing-velocity quantity and transfer examples above suggest a representation that grows with the dynamics. The design question is how to choose refinement times while controlling the accumulated error and preserving the current law.
+
+For descent, we can ask whether an approximate gradient still reduces the loss. For generation, the quantity we ultimately care about is the error in the endpoint law.
+
+A direct stability calculation separates three contributions: error in the initial functions, accumulated velocity error, and jumps caused by changing representations. The flow's sensitivity amplifies these errors. Section 5 and Appendix D give the corresponding bound under a state-Lipschitz reference velocity and finite-second-moment assumptions.
+
+This suggests refining where the remaining contribution to endpoint error is large. Velocity-learning error, tangent-projection error, and numerical integration error should be measured separately. A relative velocity tolerance also needs an absolute tolerance near zero velocity. The generative path has no requirement to reduce a scalar objective at every step.
+
+As the two-mode example in Section 5 shows, preserving a coarse sample does not supply the conditional randomness of newly represented modes. One possible design keeps a common fine-scale random seed and reveals its modes progressively. Their distribution must be consistent with the current transport marginal, and the coarse dynamics must account for their effects.
+
+A tractable starting experiment would use fixed nested spaces and known field velocities. Compare adaptive refinement with a fixed fine representation at matched endpoint accuracy and total cost, separating projection, transfer, and integration errors. Learned velocities and a moving basis can then be studied once the transfer and marginal-consistency questions are understood.
+
+### Sources conditioned on physics and observations
 
 A source covariance describes which functions are plausible before transport. Compatible spectra can keep a transport regular, but a marginal field covariance may be poorly suited to a conditional inverse problem. Boundaries, forcing, and measurements can change both the uncertain scales and their correlations.
 
 This points toward context-dependent functional sources, constraint-preserving velocities, and transports informed by PDE stability. Compare white, scalar-normalized, and spectrally colored sources with the same architecture before attributing an additional benefit to the architecture. Evaluate the generated law alongside physical residuals and observables; accurate-looking samples do not determine uncertainty calibration.
 
-### Make the theory useful at finite accuracy
+#### Physical guidance and the intended distribution
+
+An appealing shortcut is to add a physical correction to an already trained generative velocity:
+
+$$
+v_\tau^{\mathrm{guided}}(u)
+=v_\tau(u)-\lambda_\tau\nabla_H\mathcal L(u).
+$$
+
+This changes the transport and generally changes its endpoint law. It is a new sampling model whose target must be justified or evaluated. A more deliberate connection would specify the desired law first, then design or learn a velocity for it. The open question is how physical information can help learn that transport without losing the uncertainty we intended to represent.
+
+### Data requirements and cost at a prescribed accuracy
 
 Existence and asymptotic consistency leave open the constants that govern an actual computation. A useful theory would estimate representation tails from data, relate velocity error to physical quantities of interest, and allocate error between learning, refinement, and integration. For operator learning, it should also estimate the kernel rank needed at a chosen accuracy and connect constructive approximability to finite-data learning. Local or one-sided stability may give sharper estimates than a global Lipschitz envelope.
 
@@ -1229,7 +1284,7 @@ $$
 \right)^{1/2}.
 $$
 
-The reference marginals equal the training-path marginals, so Appendix B identifies the integral with \(\mathcal E\). The coupling bounds endpoint Wasserstein distance. Adding approximation, smoothing, and numerical error by the triangle inequality yields Figure 11's budget.
+The reference marginals equal the training-path marginals, so Appendix B identifies the integral with \(\mathcal E\). The coupling bounds endpoint Wasserstein distance. Adding approximation, smoothing, and numerical error by the triangle inequality yields Figure 14's budget.
 
 This bound uses the learned envelope, unlike Appendix D's defect bound along computed trajectories, which uses the reference envelope. Neither follows solely from small empirical loss.
 
@@ -1309,7 +1364,7 @@ Uniform approximation also bounds population risk on the admitted family: if \(\
 1. Csillag, D., et al. [Functional Gradient Descent with Adaptive Representations](https://arxiv.org/abs/2606.16926). arXiv:2606.16926, 2026.
 2. Kerrigan, G., Migliorini, G., and Smyth, P. [Functional Flow Matching](https://proceedings.mlr.press/v238/kerrigan24a.html). AISTATS, PMLR 238:3934–3942, 2024.
 3. Bunker, J., et al. [Autoencoders in Function Space](https://www.jmlr.org/papers/v26/25-0035.html). JMLR 26(165):1–54, 2025.
-4. Wang, S., et al. [FunDiff: diffusion models over function spaces for physics-informed generative modeling](https://doi.org/10.1038/s41467-026-72292-0). Nature Communications 17, 5749, 2026. Figure 8 uses the 2025 preprint version.
+4. Wang, S., et al. [FunDiff: diffusion models over function spaces for physics-informed generative modeling](https://doi.org/10.1038/s41467-026-72292-0). Nature Communications 17, 5749, 2026. Figure 12 uses the 2025 preprint version.
 5. Serrano, L., et al. [Operator Learning with Neural Fields: Tackling PDEs on General Geometries](https://arxiv.org/abs/2306.07266). arXiv:2306.07266, 2023.
 6. Yin, Y., et al. [Continuous PDE Dynamics Forecasting with Implicit Neural Representations](https://arxiv.org/abs/2209.14855). ICLR, 2023.
 7. Serrano, L., et al. [AROMA: Preserving Spatial Structure for Latent PDE Modeling with Local Neural Fields](https://arxiv.org/abs/2406.02176). arXiv:2406.02176, 2024.

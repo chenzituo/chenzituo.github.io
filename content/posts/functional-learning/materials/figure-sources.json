@@ -186,5 +186,82 @@
     "license_url": null,
     "changes": "Original schematic of the exact and approximate Picard constructions in Furuya et al. Section 4.1, with a standard perturbed-contraction bound. No paper figure or empirical result reproduced.",
     "source_tex": "diagrams/functional-operator-picard.tex"
+  },
+  {
+    "image": "../figures/continuum-attention-architecture.png",
+    "source_pdf": "papers/continuum-attention-neural-operators.pdf",
+    "source_url": "https://www.jmlr.org/papers/v26/24-0879.html",
+    "figure": 1,
+    "pdf_page": 15,
+    "extraction": {
+      "tool": "pdftoppm",
+      "scale_to": 3300,
+      "crop_xywh": [
+        357,
+        1630,
+        1836,
+        772
+      ]
+    },
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "changes": "Complete figure content extracted from the PDF page and rasterized; surrounding text and original caption omitted. New explanatory caption and source credit supplied in the blog."
+  },
+  {
+    "image": "../figures/continuum-attention-darcy.png",
+    "source_pdf": "papers/continuum-attention-neural-operators.pdf",
+    "source_url": "https://www.jmlr.org/papers/v26/24-0879.html",
+    "figure": 12,
+    "pdf_page": 30,
+    "extraction": {
+      "tool": "pdftoppm",
+      "scale_to": 3300,
+      "crop_xywh": [
+        536,
+        264,
+        1478,
+        921
+      ]
+    },
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "changes": "Complete figure content extracted from the PDF page and rasterized; surrounding text and original caption omitted. New explanatory caption and source credit supplied in the blog."
+  },
+  {
+    "image": "../figures/ffm-navier-stokes-samples.png",
+    "source_pdf": "papers/functional-flow-matching-aistats.pdf",
+    "source_url": "https://proceedings.mlr.press/v238/kerrigan24a.html",
+    "figure": 2,
+    "pdf_page": 5,
+    "extraction": {
+      "tool": "pdftoppm",
+      "scale_to": 3300,
+      "crop_xywh": [
+        255,
+        287,
+        2045,
+        914
+      ]
+    },
+    "license_url": null,
+    "changes": "Complete figure content extracted from the PDF page and rasterized; surrounding text and original caption omitted. New explanatory caption and source credit supplied in the blog.",
+    "includes": "Complete Figure 2, including the embedded Table 2a; samples are independent draws, not paired predictions."
+  },
+  {
+    "image": "../figures/ffm-conditional-functions.png",
+    "source_pdf": "papers/functional-flow-matching-aistats.pdf",
+    "source_url": "https://proceedings.mlr.press/v238/kerrigan24a.html",
+    "figure": 5,
+    "pdf_page": 8,
+    "extraction": {
+      "tool": "pdftoppm",
+      "scale_to": 3300,
+      "crop_xywh": [
+        1313,
+        1775,
+        816,
+        717
+      ]
+    },
+    "license_url": null,
+    "changes": "Complete figure content extracted from the PDF page and rasterized; surrounding text and original caption omitted. New explanatory caption and source credit supplied in the blog."
   }
 ]
