@@ -43,7 +43,7 @@ Keep post images beside their `index.md` and reference them as `![Description](f
 
 For equations, set `math: true` and use `\(x\)` inline or `$$...$$` on separate lines for display equations. Math pages load MathJax 3.2.2 from jsDelivr; ordinary pages do not load it.
 
-The Functional learning note is a format-only example: expanded contents, section anchors, Citations, Appendix, and References. Its `{{< cite-note >}}` shortcode generates a human-readable citation and copyable BibTeX from the page title, URL, and date. While the note is planned it labels these as a preview; finishing the note updates their dates automatically. Add verified author–year links in the prose and full source entries in References when writing.
+The Functional Learning article includes section anchors, explanatory figures, an Outlook, proof appendices, and references. Its `{{< cite-note >}}` shortcode generates a human-readable citation and copyable BibTeX from the page title, URL, and publication date. Planned notes label citations as previews; finishing a note updates their dates automatically. Add verified author–year links in the prose and full source entries in References when writing. Published articles remain editable: change their Markdown and assets, then commit and push again while keeping the original publication date.
 
 ## Publish on GitHub Pages
 

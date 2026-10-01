@@ -1,0 +1,178 @@
+[
+  {
+    "image": "../figures/fgd-adaptive.png",
+    "source_pdf": "papers/functional-gradient-descent.pdf",
+    "source_url": "https://arxiv.org/abs/2606.16926v1",
+    "figure": 1,
+    "pdf_page": 2,
+    "extraction": {
+      "tool": "pdftoppm",
+      "scale_to": 2200,
+      "crop_xywh": [
+        288,
+        192,
+        1124,
+        582
+      ]
+    },
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "changes": "Diagram extracted from the page, rasterized, and displayed with a new explanatory caption; diagram content unchanged."
+  },
+  {
+    "image": "../figures/ffm-function-flow.png",
+    "source_pdf": "papers/functional-flow-matching.pdf",
+    "source_url": "https://arxiv.org/abs/2305.17209v2",
+    "figure": 1,
+    "pdf_page": 2,
+    "extraction": {
+      "tool": "pdftoppm",
+      "scale_to": 2200,
+      "crop_xywh": [
+        285,
+        210,
+        1128,
+        254
+      ]
+    },
+    "license_url": null,
+    "changes": "Diagram extracted from the page, rasterized, and displayed with a new explanatory caption; diagram content unchanged."
+  },
+  {
+    "image": "../figures/fundiff-framework.png",
+    "source_pdf": "papers/fundiff.pdf",
+    "source_url": "https://arxiv.org/abs/2506.07902v2",
+    "figure": 1,
+    "pdf_page": 7,
+    "extraction": {
+      "tool": "pdftoppm",
+      "scale_to": 2200,
+      "crop_xywh": [
+        156,
+        168,
+        1392,
+        1490
+      ]
+    },
+    "license_url": "https://creativecommons.org/licenses/by-nc-nd/4.0/",
+    "changes": "Diagram extracted from the page, rasterized, and displayed with a new explanatory caption; diagram content unchanged."
+  },
+  {
+    "image": "../figures/coral-function-codes.png",
+    "source_pdf": "papers/coral.pdf",
+    "source_url": "https://arxiv.org/abs/2306.07266v2",
+    "figure": 2,
+    "pdf_page": 4,
+    "extraction": {
+      "tool": "pdftoppm",
+      "scale_to": 3300,
+      "crop_xywh": [
+        780,
+        765,
+        1020,
+        668
+      ]
+    },
+    "license_url": "http://arxiv.org/licenses/nonexclusive-distrib/1.0/",
+    "changes": "Complete figure extracted from the PDF page and rasterized; surrounding page text and original caption omitted. New explanatory caption and source credit supplied in the blog."
+  },
+  {
+    "image": "../figures/fgd-wave-solution.png",
+    "source_pdf": "papers/functional-gradient-descent.pdf",
+    "source_url": "https://arxiv.org/abs/2606.16926v1",
+    "figure": 3,
+    "pdf_page": 8,
+    "extraction": {
+      "tool": "pdftoppm",
+      "scale_to": 3300,
+      "crop_xywh": [
+        432,
+        285,
+        1686,
+        784
+      ]
+    },
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "changes": "Complete figure extracted from the PDF page and rasterized; surrounding page text and original caption omitted. New explanatory caption and source credit supplied in the blog."
+  },
+  {
+    "image": "../figures/fgd-inverse-rendering.png",
+    "source_pdf": "papers/functional-gradient-descent.pdf",
+    "source_url": "https://arxiv.org/abs/2606.16926v1",
+    "figure": 4,
+    "pdf_page": 9,
+    "extraction": {
+      "tool": "pdftoppm",
+      "scale_to": 3300,
+      "crop_xywh": [
+        432,
+        285,
+        1686,
+        892
+      ]
+    },
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "changes": "Complete figure extracted from the PDF page and rasterized; surrounding page text and original caption omitted. New explanatory caption and source credit supplied in the blog."
+  },
+  {
+    "image": "../figures/residual-function-transport.png",
+    "source_pdf": "papers/residual-augmented-flow-operators.pdf",
+    "source_url": "https://arxiv.org/abs/2512.12749v3",
+    "figure": 1,
+    "pdf_page": 9,
+    "extraction": {
+      "tool": "pdftoppm",
+      "scale_to": 3300,
+      "crop_xywh": [
+        327,
+        288,
+        1710,
+        810
+      ]
+    },
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "changes": "Complete figure extracted from the PDF page and rasterized; surrounding page text and original caption omitted. New explanatory caption and source credit supplied in the blog."
+  },
+  {
+    "image": "../figures/scale-adaptive-spectra.png",
+    "source_pdf": "papers/scale-adaptive-generative-flows.pdf",
+    "source_url": "https://arxiv.org/abs/2509.02971v2",
+    "figure": 2,
+    "pdf_page": 12,
+    "extraction": {
+      "tool": "pdftoppm",
+      "scale_to": 3300,
+      "crop_xywh": [
+        420,
+        802,
+        1710,
+        562
+      ]
+    },
+    "license_url": "http://arxiv.org/licenses/nonexclusive-distrib/1.0/",
+    "changes": "Complete figure extracted from the PDF page and rasterized; surrounding page text and original caption omitted. New explanatory caption and source credit supplied in the blog."
+  },
+  {
+    "image": "../figures/functional-learning-elements.svg",
+    "source_type": "original LaTeX/TikZ explanatory schematic",
+    "source_pdf": null,
+    "source_url": null,
+    "figure": null,
+    "pdf_page": null,
+    "creation": "LaTeX/TikZ compiled with pdflatex; vector SVG exported from the PDF with pdftocairo. Explicit white background and outlined font glyphs.",
+    "license_url": null,
+    "changes": "Original diagram; no paper figure reproduced or modified. Rendered PNG and website preview checked for layout.",
+    "source_tex": "diagrams/functional-learning-elements.tex"
+  },
+  {
+    "image": "../figures/functional-theory-error-chain.svg",
+    "source_type": "original LaTeX/TikZ explanatory schematic",
+    "source_pdf": null,
+    "source_url": null,
+    "figure": null,
+    "pdf_page": null,
+    "creation": "LaTeX/TikZ compiled with pdflatex; vector SVG exported with pdftocairo. Explicit white background and outlined font glyphs.",
+    "license_url": null,
+    "changes": "Original theory error-budget diagram; no empirical data or paper figure reproduced. Rendered PNG and website image/caption visually checked.",
+    "source_tex": "diagrams/functional-theory-error-chain.tex"
+  }
+]
