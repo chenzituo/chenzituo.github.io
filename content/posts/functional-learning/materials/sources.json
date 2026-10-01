@@ -1,0 +1,218 @@
+{
+  "assembled": "2026-09-30",
+  "papers": [
+    {
+      "title": "Functional Gradient Descent with Adaptive Representations",
+      "authors": [
+        "Csillag, Daniel",
+        "Schuller, Rodrigo",
+        "Dall'Antonia, Pedro",
+        "Guibas, Leonidas",
+        "Velho, Luiz",
+        "Novello, Tiago"
+      ],
+      "identifier": "2606.16926",
+      "citation_year": "2026",
+      "source_url": "https://arxiv.org/abs/2606.16926",
+      "local_pdf": "/Users/zituochen/Documents/Obsidian Vault/Life/Collectives/Blog/content/posts/functional-learning/materials/papers/functional-gradient-descent.pdf",
+      "acquired_from": "https://arxiv.org/pdf/2606.16926",
+      "sha256": "802781a92eafc658bf380463f7a5f84ae7ae60cf8b54d082d31f5d79ea7da128",
+      "identity_confidence": "high; first-page title and authors checked",
+      "extraction_quality": "clean first-page text; full text not audited",
+      "reading_coverage": "abstract, metadata, PDF first page; deeper reading needed",
+      "vault_identifier_matches": []
+    },
+    {
+      "title": "FunDiff: Diffusion Models over Function Spaces for Physics-Informed Generative Modeling",
+      "authors": [
+        "Wang, Sifan",
+        "Dou, Zehao",
+        "Shan, Siming",
+        "Liu, Tong-Rui",
+        "Lu, Lu"
+      ],
+      "identifier": "2506.07902",
+      "citation_year": "2026",
+      "source_url": "https://doi.org/10.1038/s41467-026-72292-0",
+      "local_pdf": "/Users/zituochen/Documents/Obsidian Vault/Life/Collectives/Blog/content/posts/functional-learning/materials/papers/fundiff.pdf",
+      "acquired_from": "https://arxiv.org/pdf/2506.07902",
+      "sha256": "b33b3b45c84c266f5fe7df572fe3262e11cb140faf562d09f73070fba0dfe89f",
+      "identity_confidence": "high; first-page title and authors checked",
+      "extraction_quality": "clean first-page text; full text not audited",
+      "reading_coverage": "abstract, metadata, PDF first page; deeper reading needed",
+      "vault_identifier_matches": [
+        "/Users/zituochen/Documents/Obsidian Vault/Crawler/NeuralOperators/Sifan Wang.md",
+        "/Users/zituochen/Documents/Obsidian Vault/Rebuttal/Latent Generative Solver/ICML/supplement/baselines_generative/ADAPTATION_NOTES.md"
+      ]
+    },
+    {
+      "title": "GeoFunFlow: Geometric Function Flow Matching for Inverse Operator Learning over Complex Geometries",
+      "authors": [
+        "Wang, Sifan",
+        "Wu, Zhikai",
+        "van Dijk, David",
+        "Lu, Lu"
+      ],
+      "identifier": "2509.24117",
+      "citation_year": "2025",
+      "source_url": "https://arxiv.org/abs/2509.24117",
+      "local_pdf": "/Users/zituochen/Documents/Obsidian Vault/Life/Collectives/Blog/content/posts/functional-learning/materials/papers/geofunflow.pdf",
+      "acquired_from": "https://arxiv.org/pdf/2509.24117",
+      "sha256": "7e5d9f7639721c796c33fd6ac117b56f73e84803fe2cf46eeb9aeaf8832bb531",
+      "identity_confidence": "high; first-page title and authors checked",
+      "extraction_quality": "clean first-page text; full text not audited",
+      "reading_coverage": "abstract, metadata, PDF first page; deeper reading needed",
+      "vault_identifier_matches": []
+    },
+    {
+      "title": "Operator Learning with Neural Fields: Tackling PDEs on General Geometries",
+      "authors": [
+        "Serrano, Louis",
+        "Le Boudec, Lise",
+        "Kassaï Koupaï, Armand",
+        "Wang, Thomas X",
+        "Yin, Yuan",
+        "Vittaut, Jean-Noël",
+        "Gallinari, Patrick"
+      ],
+      "identifier": "2306.07266",
+      "citation_year": "2023",
+      "source_url": "https://arxiv.org/abs/2306.07266",
+      "local_pdf": "/Users/zituochen/Documents/Obsidian Vault/Life/Collectives/Blog/content/posts/functional-learning/materials/papers/coral.pdf",
+      "acquired_from": "https://arxiv.org/pdf/2306.07266",
+      "sha256": "30042d595cacfa0d473acba1ec7bbf5d6656eaccb5894eea0587b7c6e3c4906e",
+      "identity_confidence": "high; first-page title and authors checked",
+      "extraction_quality": "clean first-page text; full text not audited",
+      "reading_coverage": "abstract, metadata, PDF first page; deeper reading needed",
+      "vault_identifier_matches": []
+    },
+    {
+      "title": "Continuous PDE Dynamics Forecasting with Implicit Neural Representations",
+      "authors": [
+        "Yin, Yuan",
+        "Kirchmeyer, Matthieu",
+        "Franceschi, Jean-Yves",
+        "Rakotomamonjy, Alain",
+        "Gallinari, Patrick"
+      ],
+      "identifier": "2209.14855",
+      "citation_year": "2023",
+      "source_url": "https://arxiv.org/abs/2209.14855",
+      "local_pdf": "/Users/zituochen/Documents/Obsidian Vault/Life/Collectives/Blog/content/posts/functional-learning/materials/papers/dino.pdf",
+      "acquired_from": "https://arxiv.org/pdf/2209.14855",
+      "sha256": "bec6426577a3c7dfdc68fc6aa90374be49c3b8669cc27e6cb394c5b33b8e24da",
+      "identity_confidence": "high; first-page title and authors checked",
+      "extraction_quality": "clean first-page text; full text not audited",
+      "reading_coverage": "abstract, metadata, PDF first page; deeper reading needed",
+      "vault_identifier_matches": []
+    },
+    {
+      "title": "AROMA: Preserving Spatial Structure for Latent PDE Modeling with Local Neural Fields",
+      "authors": [
+        "Serrano, Louis",
+        "Wang, Thomas X",
+        "Le Naour, Etienne",
+        "Vittaut, Jean-Noël",
+        "Gallinari, Patrick"
+      ],
+      "identifier": "2406.02176",
+      "citation_year": "2024",
+      "source_url": "https://arxiv.org/abs/2406.02176",
+      "local_pdf": "/Users/zituochen/Documents/Obsidian Vault/Life/Collectives/Blog/content/posts/functional-learning/materials/papers/aroma.pdf",
+      "acquired_from": "https://arxiv.org/pdf/2406.02176",
+      "sha256": "e0b157a2c062a02a7aa3c378894c5c801220523dfc25d14670e607a2fffab2d9",
+      "identity_confidence": "high; first-page title and authors checked",
+      "extraction_quality": "clean first-page text; full text not audited",
+      "reading_coverage": "abstract, metadata, PDF first page; deeper reading needed",
+      "vault_identifier_matches": []
+    },
+    {
+      "title": "Neural Operator: Learning Maps Between Function Spaces With Applications to PDEs",
+      "authors": [
+        "Kovachki, Nikola",
+        "Li, Zongyi",
+        "Liu, Burigede",
+        "Azizzadenesheli, Kamyar",
+        "Bhattacharya, Kaushik",
+        "Stuart, Andrew",
+        "Anandkumar, Anima"
+      ],
+      "identifier": "2108.08481",
+      "citation_year": "2023",
+      "source_url": "https://jmlr.org/papers/v24/21-1524.html",
+      "local_pdf": "/Users/zituochen/Documents/Obsidian Vault/Life/Collectives/Blog/content/posts/functional-learning/materials/papers/neural-operator.pdf",
+      "acquired_from": "/Users/zituochen/Library/Application Support/Mendeley Desktop/Downloaded/Kovachki et al. - 2021 - Neural Operator Learning Maps Between Function Spaces.pdf",
+      "sha256": "52e8673c1d70c6ba1daef763d55b1ec7431f0339fe547eeb768b9c8f2e92dac1",
+      "identity_confidence": "high; first-page title and authors checked",
+      "extraction_quality": "clean first-page text; full text not audited",
+      "reading_coverage": "abstract, metadata, PDF first page; deeper reading needed",
+      "vault_identifier_matches": []
+    },
+    {
+      "title": "Fourier Neural Operator for Parametric Partial Differential Equations",
+      "authors": [
+        "Li, Zongyi",
+        "Kovachki, Nikola",
+        "Azizzadenesheli, Kamyar",
+        "Liu, Burigede",
+        "Bhattacharya, Kaushik",
+        "Stuart, Andrew",
+        "Anandkumar, Anima"
+      ],
+      "identifier": "2010.08895",
+      "citation_year": "2021",
+      "source_url": "https://arxiv.org/abs/2010.08895",
+      "local_pdf": "/Users/zituochen/Documents/Obsidian Vault/Life/Collectives/Blog/content/posts/functional-learning/materials/papers/fourier-neural-operator.pdf",
+      "acquired_from": "/Users/zituochen/Library/Application Support/Mendeley Desktop/Downloaded/Li et al. - 2020 - Fourier Neural Operator for Parametric Partial Differential Equations.pdf",
+      "sha256": "6cd2645d4a50d1a61a261529b33747c674d78851bdbe6993b0961f81a17dc6f2",
+      "identity_confidence": "high; first-page title and authors checked",
+      "extraction_quality": "clean first-page text; full text not audited",
+      "reading_coverage": "abstract, metadata, PDF first page; deeper reading needed",
+      "vault_identifier_matches": [
+        "/Users/zituochen/Documents/Obsidian Vault/Rebuttal/Latent Generative Solver/ICML/supplement/preprocess/DOWNLOAD.md",
+        "/Users/zituochen/Documents/Obsidian Vault/Crawler/NeuralOperators/Zongyi Li.md",
+        "/Users/zituochen/Documents/Obsidian Vault/Funding/FM DreamBESS/papers/Neural Symbolic/Literature Index.md"
+      ]
+    },
+    {
+      "title": "Implicit Neural Representations with Periodic Activation Functions",
+      "authors": [
+        "Sitzmann, Vincent",
+        "Martel, Julien N. P.",
+        "Bergman, Alexander W.",
+        "Lindell, David B.",
+        "Wetzstein, Gordon"
+      ],
+      "identifier": "2006.09661",
+      "citation_year": "2020",
+      "source_url": "https://arxiv.org/abs/2006.09661",
+      "local_pdf": "/Users/zituochen/Documents/Obsidian Vault/Life/Collectives/Blog/content/posts/functional-learning/materials/papers/siren.pdf",
+      "acquired_from": "/Users/zituochen/Library/Application Support/Mendeley Desktop/Downloaded/Sitzmann et al. - 2020 - Implicit Neural Representations with Periodic Activation Functions.pdf",
+      "sha256": "35e460d4bbf083d63291fc4d04e0bf7eff545e7dc4dc608dad6326af00f25286",
+      "identity_confidence": "high; first-page title and authors checked",
+      "extraction_quality": "clean first-page text; full text not audited",
+      "reading_coverage": "abstract, metadata, PDF first page; deeper reading needed",
+      "vault_identifier_matches": []
+    },
+    {
+      "title": "Autoencoders in Function Space",
+      "authors": [
+        "Bunker, Justin",
+        "Girolami, Mark",
+        "Lambley, Hefin",
+        "Stuart, Andrew M.",
+        "Sullivan, T. J."
+      ],
+      "identifier": "jmlr25-0035",
+      "citation_year": "2025",
+      "source_url": "https://www.jmlr.org/papers/v26/25-0035.html",
+      "local_pdf": "/Users/zituochen/Documents/Obsidian Vault/Life/Collectives/Blog/content/posts/functional-learning/materials/papers/autoencoders-in-function-space.pdf",
+      "acquired_from": "https://www.jmlr.org/papers/volume26/25-0035/25-0035.pdf",
+      "sha256": "e5b2e098ca661463f69e4328bb74ad6bf1a0402d4eec757ebcafabc747d70936",
+      "identity_confidence": "high; first-page title and authors checked",
+      "extraction_quality": "clean first-page text; full text not audited",
+      "reading_coverage": "abstract, metadata, PDF first page; deeper reading needed",
+      "vault_identifier_matches": []
+    }
+  ]
+}

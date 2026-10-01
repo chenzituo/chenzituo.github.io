@@ -1,5 +1,5 @@
 ---
-title: "Functional learning"
+title: "How and why we redefine latent representations for PDE solutions as functional learning?"
 date: 2026-09-29
 weight: 7
 draft: false
