@@ -213,6 +213,25 @@
       "extraction_quality": "clean first-page text; full text not audited",
       "reading_coverage": "abstract, metadata, PDF first page; deeper reading needed",
       "vault_identifier_matches": []
+    },
+    {
+      "title": "Functional Flow Matching",
+      "authors": [
+        "Kerrigan, Gavin",
+        "Migliorini, Giosue",
+        "Smyth, Padhraic"
+      ],
+      "identifier": "2305.17209",
+      "citation_year": "2024",
+      "source_url": "https://proceedings.mlr.press/v238/kerrigan24a.html",
+      "local_pdf": "/Users/zituochen/Documents/Obsidian Vault/Life/Collectives/Blog/content/posts/functional-learning/materials/papers/functional-flow-matching.pdf",
+      "acquired_from": "/Users/zituochen/Library/Application Support/Mendeley Desktop/Downloaded/Kerrigan, Migliorini, Smyth - 2024 - Functional Flow Matching.pdf",
+      "sha256": "ae396f7a2ab15e85d8562a9fff82c1335b779f20ddc3d462c21c4f29041b612b",
+      "identity_confidence": "high; first-page title and authors checked",
+      "extraction_quality": "clean first-page text; full text not audited",
+      "reading_coverage": "abstract, publication metadata, PDF first page including introduction; deeper reading needed",
+      "version_note": "Saved PDF is arXiv:2305.17209v2, 5 December 2023; citation is AISTATS 2024.",
+      "vault_identifier_matches": []
     }
   ]
 }

@@ -2,9 +2,9 @@
 
 A focused reading collection for the Functional Learning blog entry, assembled on 2026-09-30. These papers cover optimization over functions, latent representations of continuous fields, operators between function spaces, and generative models of physical functions. The suggested uses below are editorial recommendations, not claims made by the papers.
 
-Start with Functional Gradient Descent, Autoencoders in Function Space, and FunDiff; then read CORAL, DINo, and AROMA for concrete latent PDE models. GeoFunFlow connects the topic to inverse problems. Neural Operator, FNO, and SIREN provide foundations.
+Start with Functional Gradient Descent, Autoencoders in Function Space, and FunDiff; then read CORAL, DINo, and AROMA for concrete latent PDE models. Functional Flow Matching provides the direct function-space flow formulation; GeoFunFlow connects the topic to inverse problems. Neural Operator, FNO, and SIREN provide foundations.
 
-All 10 PDFs are saved in [papers](papers/). Citation entries are in [references.bib](references.bib), and file provenance is in [sources.json](sources.json). Coverage is limited to abstracts, publication metadata, and PDF first-page identity checks; full methods, proofs, and experiments still need a deeper read. First-page text extraction is clean for all files; matches are high confidence.
+All 11 PDFs are saved in [papers](papers/). Citation entries are in [references.bib](references.bib), and file provenance is in [sources.json](sources.json). Coverage is limited to abstracts, publication metadata, and PDF first-page identity checks; full methods, proofs, and experiments still need a deeper read. First-page text extraction is clean for all files; matches are high confidence.
 
 ## Function space optimization
 
@@ -43,6 +43,18 @@ Uses local neural fields and spatially structured latent representations for PDE
 [Source](https://arxiv.org/abs/2406.02176) · [Local PDF](papers/aroma.pdf) · Identifier: `2406.02176`.
 
 ## Generative models of physical functions
+
+### Functional Flow Matching
+
+Kerrigan, Gavin; Migliorini, Giosue; Smyth, Padhraic. **AISTATS 2024, PMLR 238, 3934–3942; preprint first posted in 2023.**
+
+Defines flow matching through probability measures and learned vector fields on a function space. The introduction describes experiments on time series and a two-dimensional Navier–Stokes dataset. Suggested use: introduce direct function-space generative dynamics before discussing latent function autoencoders and GeoFunFlow. Its generative flow time should be distinguished from the physical time of a PDE solution.
+
+[Source](https://proceedings.mlr.press/v238/kerrigan24a.html) · [Local PDF](papers/functional-flow-matching.pdf) · [Author code](https://github.com/GavinKerrigan/functional_flow_matching) · Identifier: `2305.17209`.
+
+The saved Mendeley copy is arXiv v2 dated 5 December 2023; the bibliography follows the 2024 proceedings. Title and authors match, with clean first-page extraction; a deeper methods and results read remains pending.
+
+Existing vault mention: [Meta-Operator Flow Map Proposal](</Users/zituochen/Documents/Obsidian Vault/Rebuttal/Direct Measurement to Field/proposal/Meta-Operator Flow Map Proposal.md>).
 
 ### FunDiff: Diffusion Models over Function Spaces for Physics-Informed Generative Modeling
 
@@ -112,6 +124,6 @@ Defines and studies function-space autoencoders and variational autoencoders, in
 
 ## Local source notes
 
-The Mendeley filename search found existing copies of Neural Operator, FNO, and SIREN, which were copied here. The other seven PDFs were obtained from arXiv or JMLR; no matching Mendeley filenames were found in the targeted search. This does not exclude differently named copies. Exact source paths, download URLs, checksums, and identifier-based vault matches are recorded in sources.json. An empty vault-match list means the identifier search found no match, not that the paper is absent from the vault.
+The Mendeley filename search found existing copies of Neural Operator, FNO, SIREN, and Functional Flow Matching, which were copied here. The other seven PDFs were obtained from arXiv or JMLR; no matching Mendeley filenames were found in the targeted search. This does not exclude differently named copies. Exact source paths, download URLs, checksums, and identifier-based vault matches are recorded in sources.json. An empty vault-match list means the identifier search found no match, not that the paper is absent from the vault.
 
 Additional FunDiff context: [Sifan Wang literature note](</Users/zituochen/Documents/Obsidian Vault/Crawler/NeuralOperators/Sifan Wang.md>) and [Latent Generative Solver experiment plan](</Users/zituochen/Documents/Obsidian Vault/Rebuttal/Latent Generative Solver/ICML/experiment_plan.md>).
