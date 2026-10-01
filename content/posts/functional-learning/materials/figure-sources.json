@@ -174,5 +174,17 @@
     "license_url": null,
     "changes": "Original theory error-budget diagram; no empirical data or paper figure reproduced. Rendered PNG and website image/caption visually checked.",
     "source_tex": "diagrams/functional-theory-error-chain.tex"
+  },
+  {
+    "image": "../figures/functional-operator-picard.svg",
+    "source_type": "original LaTeX/TikZ mathematical exposition",
+    "source_pdf": null,
+    "source_url": "https://proceedings.iclr.cc/paper_files/paper/2025/hash/d4b6ccf3acd6ccbc1093e093df345ba2-Abstract-Conference.html",
+    "figure": null,
+    "pdf_page": null,
+    "creation": "LaTeX/TikZ compiled with pdflatex; vector SVG exported with pdftocairo. White background and outlined font glyphs.",
+    "license_url": null,
+    "changes": "Original schematic of the exact and approximate Picard constructions in Furuya et al. Section 4.1, with a standard perturbed-contraction bound. No paper figure or empirical result reproduced.",
+    "source_tex": "diagrams/functional-operator-picard.tex"
   }
 ]

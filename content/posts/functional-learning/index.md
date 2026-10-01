@@ -21,7 +21,7 @@ For a PDE, that distinction matters. We may need the field's derivatives, bounda
 
 **The case for functional learning is to make these operations part of the learning problem.** We specify what a function means, how its errors are measured, and how it should change; latent coordinates then provide a way to compute those changes. This becomes especially useful when a PDE model must work across discretizations, support physical calculations, or serve several tasks.
 
-Two papers give us a mathematical starting point. **Functional Gradient Descent** (FGD; [Csillag et al., 2026](https://arxiv.org/abs/2606.16926)) asks how to update a function to reduce an objective. **Functional Flow Matching** (FFM; [Kerrigan et al., 2024](https://proceedings.mlr.press/v238/kerrigan24a.html)) asks how to move a distribution of functions toward a target distribution. We will derive their essential ideas, extract the shared building elements, and use [FunDiff](https://doi.org/10.1038/s41467-026-72292-0) and related PDE models to see what those elements enable. The later questions concern learned solvers, inverse inference, and transport that can adapt its representation.
+Three papers give us a mathematical starting point. **Functional Gradient Descent** (FGD; [Csillag et al., 2026](https://arxiv.org/abs/2606.16926)) asks how to update a function to reduce an objective. **Quantitative Approximation for Neural Operators in Nonlinear Parabolic Equations** ([Furuya et al., ICLR 2025](https://proceedings.iclr.cc/paper_files/paper/2025/hash/d4b6ccf3acd6ccbc1093e093df345ba2-Abstract-Conference.html)) asks how a neural operator can approximate an entire PDE solution map. **Functional Flow Matching** (FFM; [Kerrigan et al., 2024](https://proceedings.mlr.press/v238/kerrigan24a.html)) asks how to move a distribution of functions toward a target distribution. We will develop these three objects—function, operator, and law—then use [FunDiff](https://doi.org/10.1038/s41467-026-72292-0) and related PDE models to see what their shared building elements enable. The later questions concern learned solvers, inverse inference, and transport that can adapt its representation.
 
 ## Functions and latent codes
 
@@ -57,7 +57,7 @@ There are several things we might learn with such a representation:
 | A map between functions | Learn \(\mathcal S:a\mapsto u\) | Map coefficients or initial data to solutions |
 | A law over functions | Generate \(u\sim\mu\) | Sample a family of physically admissible fields |
 
-For the first problem, we need an update that reduces a functional \(\mathcal L(u)\). For the third, we need dynamics that produce the intended distribution. These lead to FGD and FFM, respectively.
+For the first problem, we need an update that reduces a functional \(\mathcal L(u)\). For the second, we need a shared map that takes different input functions to their corresponding solutions. For the third, we need dynamics that produce the intended distribution. These lead to functional gradient descent, operator learning, and functional flow matching, respectively.
 
 **Notation.** We use \(t\) for physical time, \(s\) for optimization time, and \(\tau\) for generative time. A space-time field \(u(x,t)\) can be one state in an optimization or generative process; updating it changes the entire field.
 
@@ -78,7 +78,7 @@ The functional viewpoint has a long numerical history. A finite-element approxim
 
 The limitations in the table identify requirements to examine, rather than failures of every method in a family. One documented example is [Krishnapriyan et al.'s PINN study](https://arxiv.org/abs/2109.01050): its convection and reaction–diffusion examples expose optimization difficulties despite adequate network expressivity. Simply making the network larger does not address every source of error.
 
-Our question is how to carry the functional interpretation through the whole learning system: the norm, physical operations, update directions, and probability law. FGD and FFM make two of these connections especially clear.
+Our question is how to carry the functional interpretation through the whole learning system: the norm, physical operations, update directions, solution map, and probability law. We now examine the three learning objects in that order.
 
 ## Functional gradient descent
 
@@ -194,15 +194,148 @@ Inverse rendering changes the task operator. The unknown functions describe scen
 
 {{< figure src="figures/fgd-inverse-rendering.png" link="figures/fgd-inverse-rendering.png" alt="Novel-view renderings of a potted plant through optimization iterations, comparing a neural network, fixed-grid FGD, and adaptive FGD, with test-loss curves." caption="**Figure 4.** Inverse rendering of the Ficus scene through optimization iterations, with test-loss curves for neural, fixed, and adaptive FGD representations. Source: [Csillag et al., Figure 4](https://arxiv.org/abs/2606.16926v1), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)." >}}
 
-Both applications specify an objective on functions and then approximate its updates. They seek an optimized function. To generate a distribution of functions, we need a different way to choose the velocity.
+Both applications specify an objective on functions and then approximate its updates. They seek an optimized function. If the initial conditions or coefficients change, however, the desired function changes too. This brings us to the second object: a map that serves an entire family of problems.
+
+## Functional operator learning
+
+A per-problem optimization produces one solution. Operator learning produces a rule for obtaining solutions when the problem data change. Let \(\mathcal A\) be an input function space and \(\mathcal U\) an output function space. The object is
+
+$$
+\mathcal S:\mathcal A\to\mathcal U,
+\qquad a\mapsto u_a,
+$$
+
+and a typical training objective is
+
+$$
+\mathcal R(\theta)
+=\mathbb E_{a\sim\rho}
+\|\mathcal S_\theta(a)-\mathcal S(a)\|_{\mathcal U}^2.
+$$
+
+Here \(\rho\) describes the input problems we expect to encounter. The same parameters \(\theta\) serve every input. In FGD, the unknown being updated was a function \(u\); here, the unknown being fitted is a map between functions. Training that map can still use ordinary parameter-space gradient descent.
+
+DeepONet and FNO are established examples. For a PDE-based mathematical counterpart to FGD and FFM, we will use **Furuya, Taniguchi, and Okuda's ICLR 2025 paper**. Its construction connects operator layers to a convergent solution procedure. This lets us ask what each layer computes and why errors need not accumulate without control.
+
+### From a PDE to a fixed-point map
+
+Consider a semilinear parabolic equation on a bounded domain \(\Omega\):
+
+$$
+\partial_tu+\mathscr A u=\mathcal N(u),
+\qquad u(0)=a.
+$$
+
+The linear operator \(\mathscr A\), boundary conditions, and scalar pointwise nonlinearity \(\mathcal N\) are fixed; the initial function \(a\) varies. For the heat equation, \(\mathscr A=-\Delta\) with the chosen boundary conditions. Write \(E(t)=e^{-t\mathscr A}\) for its linear solution operator. Duhamel's formula expresses the nonlinear solution as
+
+$$
+u(t)=E(t)a+\int_0^t E(t-\zeta)\mathcal N(u(\zeta))\,d\zeta
+=: \Phi_a(u)(t).
+$$
+
+Thus the solution \(\mathcal S(a)\) is a fixed point of \(\Phi_a\). Picard iteration starts with a candidate trajectory and repeatedly applies this map:
+
+$$
+u^{(0)}=0,
+\qquad u^{(k+1)}=\Phi_a(u^{(k)}).
+$$
+
+Every \(u^{(k)}\) is a whole space-time function. Increasing \(k\) improves the candidate trajectory; increasing \(t\) moves along physical time within that trajectory.
+
+The decisive condition is contraction on an invariant ball in \(\mathcal U\): for some \(0 < q < 1\), uniformly over the admitted inputs,
+
+$$
+\|\Phi_a(v)-\Phi_a(w)\|_{\mathcal U}
+\le q\|v-w\|_{\mathcal U}.
+$$
+
+A short time interval can make this possible. For intuition, suppose \(\|E(t)\|\le M_E\), and \(\mathcal N\) has Lipschitz constant \(L_{\mathcal N}\) on the relevant bounded range. In a supremum-in-time norm, the integral contribution has Lipschitz bound \(M_E L_{\mathcal N}T\). Choosing \(T\) small enough makes it contractive, provided the map also stays inside that range. The paper uses semigroup smoothing estimates to work in mixed Lebesgue norms; Appendix I records its hypotheses.
+
+### Turning the solution procedure into an operator network
+
+Separate the initial trajectory and nonlinear correction:
+
+$$
+\Phi_a(u)=Ba+K\mathcal N(u),
+$$
+
+where
+
+$$
+(Ba)(t)=E(t)a,
+\qquad
+(Kg)(t)=\int_0^t E(t-\zeta)g(\zeta)\,d\zeta.
+$$
+
+A finite construction replaces the Green kernel in \(B,K\) by a truncated expansion and the scalar nonlinearity by a ReLU network. Its repeated block has the form
+
+$$
+\widehat u^{(k+1)}
+=B_Na+K_N\mathcal N_\theta(\widehat u^{(k)}),
+\qquad
+\widehat{\mathcal S}_{N,J}(a)=\widehat u^{(J)}.
+$$
+
+The initial-data term is carried through the blocks. Kernel operations communicate across locations, while \(\mathcal N_\theta\) acts pointwise. The same block can be reused at every iteration. This is the construction behind the paper's neural-operator approximation, rather than a claim that every trained operator architecture performs Picard iteration ([Section 4.1 and Remark 3](https://proceedings.iclr.cc/paper_files/paper/2025/file/d4b6ccf3acd6ccbc1093e093df345ba2-Paper-Conference.pdf)).
+
+{{< figure src="figures/functional-operator-picard.svg" link="figures/functional-operator-picard.svg" width="720" alt="Two parallel constructions map initial data to an entire trajectory. Exact Picard iteration converges to the PDE solution; finite kernel and neural approximations produce an operator network. A bound separates iteration error from block approximation error." caption="**Figure 5.** A solution map built from a repeated functional update. The upper row is exact Picard iteration; the lower row approximates its blocks. The same construction serves a family of initial functions. Original LaTeX/TikZ exposition of the mechanism in [Furuya et al., Section 4.1](https://proceedings.iclr.cc/paper_files/paper/2025/file/d4b6ccf3acd6ccbc1093e093df345ba2-Paper-Conference.pdf)." >}}
+
+We can see the error mechanism without inspecting all the network weights. Suppose the approximate block has uniform defect at most \(\eta\) on the invariant ball, and its iterates remain there. With \(e_k=\|\widehat u^{(k)}-\mathcal S(a)\|_{\mathcal U}\), the triangle inequality gives
+
+$$
+e_{k+1}\le q e_k+\eta,
+\qquad
+\boxed{e_J\le q^J e_0+\frac{1-q^J}{1-q}\eta.}
+$$
+
+The first term is unfinished solution iteration. The second is the cost of approximating its blocks, amplified by stability. Greater depth reduces the first term; improving kernels, nonlinearities, or numerical quadrature reduces the second. **Depth alone cannot remove the approximation floor.** Appendix I derives this bound and distinguishes the continuum construction from its numerical evaluation.
+
+### What the 2025 theorem guarantees
+
+Under the paper's semigroup, nonlinearity, and kernel-expansion assumptions, each initial-data radius \(R\) admits a sufficiently short \(T\). For any \(\varepsilon\in(0,1)\), a ReLU neural operator exists with
+
+$$
+\sup_{\|a\|_{L^\infty(\Omega)}\le R}
+\|\widehat{\mathcal S}(a)-\mathcal S(a)\|_{L^{q_t}(0,T;L^{q_x}(\Omega))}
+\le\varepsilon.
+$$
+
+For small \(\varepsilon\), its depth and neuron count satisfy
+
+$$
+L_{\rm net}\le C_L\bigl(\log\varepsilon^{-1}\bigr)^2,
+\qquad
+N_{\rm neuron}\le C_H\varepsilon^{-1}
+\bigl(\log\varepsilon^{-1}\bigr)^2.
+$$
+
+This is **uniform approximation of a solution map**, stronger than fitting one input. The construction combines logarithmically many Picard steps with approximation of a scalar nonlinearity ([Theorem 1 and its proof sketch](https://proceedings.iclr.cc/paper_files/paper/2025/file/d4b6ccf3acd6ccbc1093e093df345ba2-Paper-Conference.pdf)).
+
+The kernel rank \(N\) is a separate cost, and the theorem supplies no general rate for \(N(\varepsilon)\). Its result is local in time and measured in the stated mixed Lebesgue norm. Derivative accuracy, long-time stability, generalization from finite data, and successful optimization require additional arguments. The theorem constructs approximating weights; it does not prove that training discovers them.
+
+The choice of output norm is consequential. Operator approximation can use Banach spaces; it does not require the Hilbert structure used earlier for a Riesz gradient. If a downstream task needs a flux or a derivative, its norm and regularity requirements must enter the operator problem too.
+
+### A contemporary architectural connection
+
+[**Continuum Attention for Neural Operators** (Calvello et al., JMLR 2025)](https://www.jmlr.org/papers/v26/24-0879.html) gives a complementary example. Attention can be defined on functions through an integral:
+
+$$
+\operatorname{Att}(u)(x)
+=\frac{\int_\Omega e^{\langle Qu(x),Ku(y)\rangle}Vu(y)\,dy}
+{\int_\Omega e^{\langle Qu(x),Ku(y)\rangle}\,dy}.
+$$
+
+Here \(Q,K,V\) are pointwise linear query, key, and value maps. Finite attention approximates this operation numerically; quadrature weights matter on nonuniform nodes. The paper proves universality for a specified modified transformer operator on compact input sets, including results in differentiable-function and Sobolev norms. Those are existence guarantees, with assumptions on the spaces and architecture (Theorems 22–23), rather than an error rate for arbitrary meshes. Its spatial attention weights also differ from FFM's probability law over whole functions.
+
+We now have a map \(\mathcal S\) that takes input functions to solution functions. Random inputs \(a\sim\rho\) induce a solution law \(\mathcal S_\#\rho\). But when a physical context leaves several fields possible, we may want to learn that conditional law directly. This is the third object, addressed by FFM.
 
 ## Functional flow matching
 
 Suppose we have samples of functions: solution fields from a simulator, for example. We want to generate new functions from the same distribution. FFM starts with a reference distribution of random functions and learns a velocity that transports it toward the data distribution.
 
-Figure 5 illustrates one conditional path. Each blue curve is a complete function. As generative time advances, the curve moves from noise toward a target function; the arrows show the required functional velocity. We will construct such paths first, then see how their velocities give a training objective.
+Figure 6 illustrates one conditional path. Each blue curve is a complete function. As generative time advances, the curve moves from noise toward a target function; the arrows show the required functional velocity. We will construct such paths first, then see how their velocities give a training objective.
 
-{{< figure src="figures/ffm-function-flow.png" link="figures/ffm-function-flow.png" alt="Four stages of a noisy function evolving toward a sine curve, with arrows showing its function-space velocity." caption="**Figure 5.** A conditional function-space path from a noisy function toward a target curve. Arrows indicate its functional velocity. Source: [Kerrigan et al., Figure 1](https://arxiv.org/abs/2305.17209v2)." >}}
+{{< figure src="figures/ffm-function-flow.png" link="figures/ffm-function-flow.png" alt="Four stages of a noisy function evolving toward a sine curve, with arrows showing its function-space velocity." caption="**Figure 6.** A conditional function-space path from a noisy function toward a target curve. Arrows indicate its functional velocity. Source: [Kerrigan et al., Figure 1](https://arxiv.org/abs/2305.17209v2)." >}}
 
 ### Constructing a path between noise and a function
 
@@ -268,18 +401,19 @@ A positive trace-class covariance, \(\sum_j\lambda_j<\infty\), gives an \(H\)-va
 
 This makes source design a physical question: which modes should carry uncertainty, and how should their amplitudes decay as we increase resolution?
 
-| | Functional gradient descent | Functional flow matching |
-| --- | --- | --- |
-| Objective | Decrease a functional | Transport a probability law |
-| Velocity | Negative Riesz gradient | Learned generative field |
-| Essential structure | Geometry and approximation accuracy | Measures, covariance, conditional paths |
-| Interpretation | Optimization time | Generative time |
+| | Functional gradient descent | Operator learning: the 2025 construction | Functional flow matching |
+| --- | --- | --- | --- |
+| Object | One function | A map between functions | A law over functions |
+| Goal | Decrease a functional | Approximate a solution map uniformly over inputs | Transport a probability law |
+| Update mechanism | Negative Riesz gradient | Repeated approximate fixed-point blocks | Learned generative velocity |
+| Essential structure | Geometry and gradient accuracy | PDE well-posedness, contraction, kernel and nonlinear approximation | Measures, covariance, conditional paths |
+| Iteration meaning | Optimization time | Refinement of a whole candidate trajectory | Generative time |
 
-FGD obtains its velocity from an objective and an inner product. FFM obtains it by regression against a probability path; that velocity need not be a gradient field. These are two ways of specifying what functions should do. Their ingredients also let us describe models beyond either paper.
+FGD obtains its velocity from an objective and an inner product. The operator construction obtains its blocks from a PDE integral equation. FFM obtains its velocity by regression against a probability path; that velocity need not be a gradient field. These supply three distinct learning objects, with shared questions about representation, approximation, and stability.
 
 ## The building elements of functional learning
 
-Consider a PDE task with known problem data \(a\): coefficients, forcing, domain, and initial or boundary conditions. We want to construct a solution function, or a law of possible functions conditioned on \(a\). Before choosing a neural architecture, we can specify six elements.
+Consider a PDE task with known problem data \(a\): coefficients, forcing, domain, and initial or boundary conditions. We want to construct a solution function, a map across these problems, or a law of possible functions conditioned on \(a\). Before choosing a neural architecture, we can specify six elements.
 
 | Element | Mathematical form | What it determines |
 | --- | --- | --- |
@@ -287,14 +421,14 @@ Consider a PDE task with known problem data \(a\): coefficients, forcing, domain
 | Operations | \(\mathcal O_hu,\ \mathcal A_a(u),\ Q(u)\) | How we observe the field, apply the governing model, and extract quantities |
 | Geometry and regularity | \(\langle\cdot,\cdot\rangle_H\), domains of operators | Which errors and changes are small; which operations are defined |
 | Target | \(u^\star(a),\ \mathcal S:a\mapsto u,\ \mu(du\mid a)\) | One solution, a solution map, or a conditional law |
-| Evolution | \(\partial_r u_r=V_r(u_r;a)\) | How to approach that target |
+| Construction or evolution | \(\widehat{\mathcal S}:a\mapsto u\), \(u^{(k+1)}=\Phi_a(u^{(k)})\), or \(\partial_r u_r=V_r(u_r;a)\) | How to obtain or approach that target |
 | Numerical realization | \(u\approx D_m(z)\), quadrature, integration | How finite computations approximate the functional problem |
 
 Here \(\mathcal O_h\) is an observation operator, \(\mathcal A_a\) is a physical or measurement model, and \(Q\) is a quantity such as drag or heat flux. The choice of \(H\) must support the required operations, possibly with additional regularity. For a probabilistic target, we must also specify a reference law and its covariance; the inner product alone does not determine a random function.
 
-The evolution parameter \(r\) has a meaning supplied by the task. In FGD it is optimization time \(s\), with \(V=-\nabla_H\mathcal L\). In FFM it is generative time \(\tau\), with a learned velocity chosen to transport laws. An evolution PDE supplies a third possibility: physical time \(t\), with a velocity specified by the governing equation. Figure 6 separates these choices from the coordinates used to implement them.
+An operator can predict a solution directly or construct it through iterations such as Figure 5. When we use a continuous evolution, its parameter \(r\) has a meaning supplied by the task. In FGD it is optimization time \(s\), with \(V=-\nabla_H\mathcal L\). In FFM it is generative time \(\tau\), with a learned velocity chosen to transport laws. An evolution PDE supplies a third possibility: physical time \(t\), with a velocity specified by the governing equation. Figure 7 separates these continuous motions from the coordinates used to implement them.
 
-{{< figure src="figures/functional-learning-elements.svg" link="figures/functional-learning-elements.svg" width="720" alt="A functional learning problem specifies a field, physical operations, geometry, and a target. Its motion can be optimization, physical evolution, or generative transport. A decoder and numerical solver realize the chosen motion in finite coordinates." caption="**Figure 6.** Different tasks supply different motions of a function. The decoder and numerical solver must realize the chosen motion and preserve the quantities the task needs. Original explanatory schematic, drawn in LaTeX/TikZ." >}}
+{{< figure src="figures/functional-learning-elements.svg" link="figures/functional-learning-elements.svg" width="720" alt="A functional learning problem specifies a field, physical operations, geometry, and a target. Its motion can be optimization, physical evolution, or generative transport. A decoder and numerical solver realize the chosen motion in finite coordinates." caption="**Figure 7.** Different tasks supply different motions of a function. The decoder and numerical solver must realize the chosen motion and preserve the quantities the task needs. Original explanatory schematic, drawn in LaTeX/TikZ." >}}
 
 This is what makes the functional viewpoint useful: the same field can be observed on several meshes, evaluated by a physical operator, optimized, or sampled from a law. Each operation has requirements that can be stated before we settle on its coordinates. A continuous decoder is one ingredient; the rest of the learning problem must respect the function it describes.
 
@@ -410,11 +544,11 @@ $$
 
 The two mixed derivatives cancel, so this velocity is divergence-free by construction. A residual penalty takes another route: it penalizes violations at the points and with the weights used in the loss.
 
-Figure 7 shows the FunDiff pipeline in the preprint. A Vision Transformer processes the sampled inputs, and a Perceiver encoder handles variable discretizations and maps them into a common latent representation. The decoder uses cross-attention between query coordinates and encoded features to evaluate the function. Physical constraints enter this function autoencoder through its architecture or training loss.
+Figure 8 shows the FunDiff pipeline in the preprint. A Vision Transformer processes the sampled inputs, and a Perceiver encoder handles variable discretizations and maps them into a common latent representation. The decoder uses cross-attention between query coordinates and encoded features to evaluate the function. Physical constraints enter this function autoencoder through its architecture or training loss.
 
 The second stage trains a Diffusion Transformer using rectified flow on the learned latent representation. Generation integrates a latent ODE from Gaussian noise and decodes its output into a function. Thus physical-prior enforcement is carried by the autoencoder and is decoupled from the generative model's training and inference.
 
-{{< figure src="figures/fundiff-framework.png" link="figures/fundiff-framework.png" alt="FunDiff architecture: an encoder and coordinate-query decoder with physical priors, followed by latent diffusion training and inference for several field-reconstruction tasks." caption="**Figure 7.** FunDiff combines a function encoder and coordinate decoder, physical priors, and latent generation. Complete original diagram. Source: [Wang et al., Figure 1, preprint v2](https://arxiv.org/abs/2506.07902v2), [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/)." >}}
+{{< figure src="figures/fundiff-framework.png" link="figures/fundiff-framework.png" alt="FunDiff architecture: an encoder and coordinate-query decoder with physical priors, followed by latent diffusion training and inference for several field-reconstruction tasks." caption="**Figure 8.** FunDiff combines a function encoder and coordinate decoder, physical priors, and latent generation. Complete original diagram. Source: [Wang et al., Figure 1, preprint v2](https://arxiv.org/abs/2506.07902v2), [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/)." >}}
 
 The remaining issue is derivative accuracy. A decoder can approximate field values closely while having inaccurate derivatives. On \((0,2\pi)\), take the error function
 
@@ -463,7 +597,7 @@ These three demands explain when the functional view becomes important. Changing
 
 ### From a solution map to a learned correction
 
-A [neural operator](https://jmlr.org/papers/v24/21-1524.html) learns a solution map \(\mathcal S:a\mapsto u\) between function spaces. This addresses a family of PDE problems: changing the coefficient field or initial data changes the output function. CORAL's code processor in Figure 1 is one realization of this input-to-output structure.
+A [neural operator](https://jmlr.org/papers/v24/21-1524.html) learns a solution map \(\mathcal S:a\mapsto u\) between function spaces. This addresses a family of PDE problems: changing the coefficient field or initial data changes the output function. CORAL's code processor in Figure 1 is one realization of this input-to-output structure. The 2025 Picard construction gives another: approximate a stable solution procedure with shared operator blocks, as in Figure 5.
 
 FGD suggests a complementary object to learn: an update of the current solution. We could use a learned solution map for initialization and then refine the field:
 
@@ -563,9 +697,9 @@ Function-space Bayesian inversion and [functional normalizing flows](https://arx
 
 [Residual-augmented flow matching operators](https://arxiv.org/abs/2512.12749v3) uses the third route. A low-fidelity solver first predicts a field. The generative model learns a distribution of residual functions conditioned on that prediction and the problem input; adding a residual gives a corrected field.
 
-In Figure 8, the upper branch supplies the low-fidelity context. The lower branch transports a Gaussian reference to residual functions. This changes what the generative model must produce: the uncertainty and structure of the correction, rather than the entire field.
+In Figure 9, the upper branch supplies the low-fidelity context. The lower branch transports a Gaussian reference to residual functions. This changes what the generative model must produce: the uncertainty and structure of the correction, rather than the entire field.
 
-{{< figure src="figures/residual-function-transport.png" link="figures/residual-function-transport.png" alt="A low-fidelity PDE solution conditions a functional flow that transports a Gaussian reference toward a distribution of residual functions, which correct the low-fidelity solution." caption="**Figure 8.** A Gaussian reference is transported to residual functions, conditioned on the problem input and a low-fidelity prediction. Source: [Bhola and Duraisamy, Figure 1](https://arxiv.org/abs/2512.12749v3), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)." >}}
+{{< figure src="figures/residual-function-transport.png" link="figures/residual-function-transport.png" alt="A low-fidelity PDE solution conditions a functional flow that transports a Gaussian reference toward a distribution of residual functions, which correct the low-fidelity solution." caption="**Figure 9.** A Gaussian reference is transported to residual functions, conditioned on the problem input and a low-fidelity prediction. Source: [Bhola and Duraisamy, Figure 1](https://arxiv.org/abs/2512.12749v3), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)." >}}
 
 Distributional accuracy and physical accuracy remain separate objectives. [Physics vs Distributions](https://arxiv.org/abs/2506.08604v3) studies their tension explicitly. A model can reduce a PDE residual while changing the distribution it was meant to reproduce.
 
@@ -649,9 +783,9 @@ A tractable starting experiment would use fixed nested spaces and known field ve
 | Representation | Add or move directions available to the dynamics | Velocity defect, transfer error, and new-mode law |
 | Solver step size | Integrate a given represented velocity accurately | Local and accumulated numerical error |
 
-[Scale-Adaptive Generative Flows](https://arxiv.org/abs/2509.02971v2) studies the source-spectrum and interpolation-schedule choices. Their effect is visible in Figure 9. For the Gaussian-field experiment shown, a spectrum-matched source tracks the target spectrum with five RK4 steps. The white-source curves retain excess energy at finer frequencies at the displayed integration budgets, across the three resolutions.
+[Scale-Adaptive Generative Flows](https://arxiv.org/abs/2509.02971v2) studies the source-spectrum and interpolation-schedule choices. Their effect is visible in Figure 10. For the Gaussian-field experiment shown, a spectrum-matched source tracks the target spectrum with five RK4 steps. The white-source curves retain excess energy at finer frequencies at the displayed integration budgets, across the three resolutions.
 
-{{< figure src="figures/scale-adaptive-spectra.png" link="figures/scale-adaptive-spectra.png" alt="Energy spectra at 32 by 32, 64 by 64, and 128 by 128 resolutions, comparing target Gaussian fields with generated fields using spectrum-matched or white noise and different integration budgets." caption="**Figure 9.** Gaussian-field energy spectra at 32², 64², and 128² resolution, comparing spectrum-matched and white sources at the displayed RK4 budgets. Source: [Chen and Vanden-Eijnden, Figure 2](https://arxiv.org/abs/2509.02971v2)." >}}
+{{< figure src="figures/scale-adaptive-spectra.png" link="figures/scale-adaptive-spectra.png" alt="Energy spectra at 32 by 32, 64 by 64, and 128 by 128 resolutions, comparing target Gaussian fields with generated fields using spectrum-matched or white noise and different integration budgets." caption="**Figure 10.** Gaussian-field energy spectra at 32², 64², and 128² resolution, comparing spectrum-matched and white sources at the displayed RK4 budgets. Source: [Chen and Vanden-Eijnden, Figure 2](https://arxiv.org/abs/2509.02971v2)." >}}
 
 [Adaptive Flow Matching for Resolving Small-Scale Physics](https://proceedings.mlr.press/v267/fotiadis25a.html) uses an encoded base distribution and adaptive noise scaling. Representation refinement adds another choice: which directions are available to the velocity at a given time. Source covariance, interpolation, representation, and solver steps can each affect accuracy and cost, through the different mechanisms in the table.
 
@@ -795,7 +929,7 @@ $$
 
 Here the Lipschitz constant belongs to the **learned velocity**: the regression error is measured along reference marginals, so we use learned-field stability to control movement away from them. Appendix G derives the bound. [Shikhman's August 2026 preprint, Theorem 23](https://arxiv.org/html/2608.04531v1), gives a related result using a superposition measure, without requiring a unique population ODE.
 
-Finally, let \(E_{\rm num}\) bound the Wasserstein difference between the numerical sampler and the exact learned ODE. Figure 10 organizes the resulting error budget:
+Finally, let \(E_{\rm num}\) bound the Wasserstein difference between the numerical sampler and the exact learned ODE. Figure 11 organizes the resulting error budget:
 
 $$
 \begin{aligned}
@@ -808,7 +942,7 @@ W_{2,H}(\widehat\mu_{\rm num},\mu)
 \end{aligned}
 $$
 
-{{< figure src="figures/functional-theory-error-chain.svg" link="figures/functional-theory-error-chain.svg" width="720" alt="A LaTeX diagram tracing a target function law through projection, prototype approximation, Gaussian smoothing, a learned flow, and numerical sampling. Each transition is labeled by its contribution to the physical Wasserstein error." caption="**Figure 10.** From a target law to a computed sample law: each approximation introduces an error measured in the same physical geometry. Original LaTeX/TikZ diagram. The learning term assumes a stable learned velocity and population excess risk." >}}
+{{< figure src="figures/functional-theory-error-chain.svg" link="figures/functional-theory-error-chain.svg" width="720" alt="A LaTeX diagram tracing a target function law through projection, prototype approximation, Gaussian smoothing, a learned flow, and numerical sampling. Each transition is labeled by its contribution to the physical Wasserstein error." caption="**Figure 11.** From a target law to a computed sample law: each approximation introduces an error measured in the same physical geometry. Original LaTeX/TikZ diagram. The learning term assumes a stable learned velocity and population excess risk." >}}
 
 The budget makes a consistency claim testable. Refinement must remove the representation floor; prototype and smoothing errors must vanish; learning must achieve \(e^{\widehat\Lambda}\sqrt{\mathcal E}\to0\); and integration error must vanish. A low empirical training loss alone establishes none of these limits. Statistical estimation, model approximation, and optimization determine the excess risk; solver accuracy determines the final term.
 
@@ -867,11 +1001,11 @@ The theory has now located the missing work precisely. We need observation consi
 
 ## Outlook
 
-The examples began with two ways to move a function: FGD follows an objective, and FFM follows a probability path. The wider opportunity is to build PDE models whose coordinates support the physical operations, corrections, and uncertainty that the problem calls for. Four directions seem especially useful.
+The examples began with three objects: FGD improves a function, operator learning shares a solution map across inputs, and FFM learns to sample a function law. The wider opportunity is to build PDE models whose coordinates support the physical operations, corrections, and uncertainty that the problem calls for. Four directions seem especially useful.
 
 ### Learn a solver whose correction has a physical meaning
 
-A learned solution map can supply a good initial field; a functional correction can then respond to new boundary conditions, parameters, or measurements. The useful question is whether that correction preserves a descent or stability property and reduces solution error at a measured cost. FGD suggests controlling gradient approximation, while Neural Galerkin suggests controlling the part of the PDE velocity that the representation can express.
+A learned solution map can supply a good initial field; a functional correction can then respond to new boundary conditions, parameters, or measurements. The useful question is whether that correction preserves a descent or stability property and reduces solution error at a measured cost. FGD suggests controlling gradient approximation; the Picard construction suggests controlling each block's defect and its amplification by the reference solver; Neural Galerkin suggests controlling the part of the PDE velocity that the representation can express.
 
 A first study could compare a frozen decoder with one trained on both states and update directions. Measure residuals, field and derivative errors, and correction cost. This would test whether a representation built for motion improves the solve beyond a representation built for reconstruction.
 
@@ -889,7 +1023,7 @@ This points toward context-dependent functional sources, constraint-preserving v
 
 ### Make the theory useful at finite accuracy
 
-Existence and asymptotic consistency leave open the constants that govern an actual computation. A useful theory would estimate representation tails from data, relate velocity error to physical quantities of interest, and allocate error between learning, refinement, and integration. Local or one-sided stability may give sharper estimates than a global Lipschitz envelope.
+Existence and asymptotic consistency leave open the constants that govern an actual computation. A useful theory would estimate representation tails from data, relate velocity error to physical quantities of interest, and allocate error between learning, refinement, and integration. For operator learning, it should also estimate the kernel rank needed at a chosen accuracy and connect constructive approximability to finite-data learning. Local or one-sided stability may give sharper estimates than a global Lipschitz envelope.
 
 Gaussian laws and finite mixtures offer analytically checkable starting points. The next step is to identify PDE families where the required regularity and stability can be established, then test the resulting predictions under refinement and changing observations.
 
@@ -1095,7 +1229,7 @@ $$
 \right)^{1/2}.
 $$
 
-The reference marginals equal the training-path marginals, so Appendix B identifies the integral with \(\mathcal E\). The coupling bounds endpoint Wasserstein distance. Adding approximation, smoothing, and numerical error by the triangle inequality yields Figure 10's budget.
+The reference marginals equal the training-path marginals, so Appendix B identifies the integral with \(\mathcal E\). The coupling bounds endpoint Wasserstein distance. Adding approximation, smoothing, and numerical error by the triangle inequality yields Figure 11's budget.
 
 This bound uses the learned envelope, unlike Appendix D's defect bound along computed trajectories, which uses the reference envelope. Neither follows solely from small empirical loss.
 
@@ -1114,12 +1248,68 @@ $$
 
 Empirical laws converge almost surely in \(W_2\) under the finite-second-moment assumption; the other terms vanish. This is an existence-level statistical consistency example with growing prototype storage. It supplies no dimension-independent sample rate, trained-network guarantee, or recovery theorem from finite noisy observations. For learned and numerical flows, the remaining two terms of the main error budget must also vanish.
 
+### I. Operator approximation through a stable fixed point
+
+The ICLR 2025 result concerns a fixed semilinear parabolic PDE and a varying initial function. In our notation, its assumptions include:
+
+- A linear solution semigroup with smoothing estimate
+  \(\|E(t)\|_{L^{b_1}\to L^{b_2}}\le C_E t^{-\nu(1/b_1-1/b_2)}\)
+  for \(1\le b_1\le b_2\le\infty\) and \(0 < t\le 1\).
+- A scalar \(C^1\) nonlinearity with \(\mathcal N(0)=0\) and
+  \( |\mathcal N(z)-\mathcal N(w)|\le C_{\mathcal N}\max(|z|,|w|)^{p-1}|z-w|\), with \(p>1\).
+- Output exponents \(q_t,q_x\in[p,\infty]\) satisfying
+  \(\nu/q_x+1/q_t<1/(p-1)\).
+- Convergence of both the initial-data and Duhamel Green-kernel expansions in the mixed norms specified in Assumption 3.
+
+These yield a common sufficiently short interval and a contraction ball for the bounded initial-data family. The theorem controls error in \(\mathcal U=L^{q_t}(0,T;L^{q_x}(\Omega))\). Neither this norm alone nor pointwise differentiability of a network establishes convergence of spatial derivatives. The time-local argument also needs further bounds to continue over successive intervals ([Sections 2–4 and Appendix D](https://proceedings.iclr.cc/paper_files/paper/2025/file/d4b6ccf3acd6ccbc1093e093df345ba2-Paper-Conference.pdf)).
+
+The following abstract estimate explains the mechanism. Let \(\Phi_a\) be \(q\)-contractive on a closed invariant ball \(\mathcal B\subset\mathcal U\), uniformly for \(a\in\mathcal A_R\), with fixed point \(\mathcal S(a)\). Suppose an approximate block obeys
+
+$$
+\sup_{a\in\mathcal A_R,\,v\in\mathcal B}
+\|\widehat\Phi_a(v)-\Phi_a(v)\|_{\mathcal U}\le\eta,
+$$
+
+and its iterates remain in \(\mathcal B\). Then
+
+$$
+\begin{aligned}
+e_{k+1}
+&=\|\widehat\Phi_a(\widehat u^{(k)})-\Phi_a(\mathcal S(a))\|_{\mathcal U}\\
+&\le\|\widehat\Phi_a(\widehat u^{(k)})-\Phi_a(\widehat u^{(k)})\|_{\mathcal U}
++\|\Phi_a(\widehat u^{(k)})-\Phi_a(\mathcal S(a))\|_{\mathcal U}\\
+&\le\eta+q e_k.
+\end{aligned}
+$$
+
+Induction gives
+
+$$
+e_J\le q^J e_0+\eta\sum_{j=0}^{J-1}q^j
+=q^J e_0+\frac{1-q^J}{1-q}\eta.
+$$
+
+This uses contraction of the reference block and a bound on the approximate iterates. It does not assume the learned block itself is contractive, and it gives no stability guarantee for arbitrary unbounded iterates. The estimate is a standard perturbed-contraction argument; the paper's proof bounds its particular kernel and nonlinear defects and ensures the required ball membership.
+
+For an engineering error budget, choose a forcing space \(\mathcal V\) on which \(K:\mathcal V\to\mathcal U\) is bounded. If \(\|\mathcal N(v)\|_{\mathcal V}\le M_{\mathcal N}\) on the ball and \(\|\mathcal N_\theta(v)-\mathcal N(v)\|_{\mathcal V}\le\delta_{\mathcal N}\), then the decomposition \(\Phi_a(v)=Ba+K\mathcal N(v)\) gives
+
+$$
+\eta\le
+R\|B_N-B\|_{L^\infty\to\mathcal U}
++M_{\mathcal N}\|K_N-K\|_{\mathcal V\to\mathcal U}
++\|K_N\|_{\mathcal V\to\mathcal U}\delta_{\mathcal N}.
+$$
+
+If numerical evaluation introduces an additional uniform block defect \(\delta_{\rm quad}\), add it to this budget, while checking that numerical iterates stay in the same ball. This separates kernel truncation, nonlinear approximation, and quadrature. The forcing space and operator bounds must be established for the particular PDE; this abstract decomposition is not an extra theorem about every implementation.
+
+Uniform approximation also bounds population risk on the admitted family: if \(\rho(\mathcal A_R)=1\) and \(\sup_a\|\widehat{\mathcal S}(a)-\mathcal S(a)\|_{\mathcal U}\le\varepsilon\), then \(\mathcal R(\widehat{\mathcal S})\le\varepsilon^2\). The converse fails in general: a small average error can hide poorly approximated inputs. Finite training data and an optimizer need their own analysis to connect the constructed operator to a trained one.
+
 ## References
 
 1. Csillag, D., et al. [Functional Gradient Descent with Adaptive Representations](https://arxiv.org/abs/2606.16926). arXiv:2606.16926, 2026.
 2. Kerrigan, G., Migliorini, G., and Smyth, P. [Functional Flow Matching](https://proceedings.mlr.press/v238/kerrigan24a.html). AISTATS, PMLR 238:3934–3942, 2024.
 3. Bunker, J., et al. [Autoencoders in Function Space](https://www.jmlr.org/papers/v26/25-0035.html). JMLR 26(165):1–54, 2025.
-4. Wang, S., et al. [FunDiff: diffusion models over function spaces for physics-informed generative modeling](https://doi.org/10.1038/s41467-026-72292-0). Nature Communications 17, 5749, 2026. Figure 7 uses the 2025 preprint version.
+4. Wang, S., et al. [FunDiff: diffusion models over function spaces for physics-informed generative modeling](https://doi.org/10.1038/s41467-026-72292-0). Nature Communications 17, 5749, 2026. Figure 8 uses the 2025 preprint version.
 5. Serrano, L., et al. [Operator Learning with Neural Fields: Tackling PDEs on General Geometries](https://arxiv.org/abs/2306.07266). arXiv:2306.07266, 2023.
 6. Yin, Y., et al. [Continuous PDE Dynamics Forecasting with Implicit Neural Representations](https://arxiv.org/abs/2209.14855). ICLR, 2023.
 7. Serrano, L., et al. [AROMA: Preserving Spatial Structure for Latent PDE Modeling with Local Neural Fields](https://arxiv.org/abs/2406.02176). arXiv:2406.02176, 2024.
@@ -1143,6 +1333,9 @@ Empirical laws converge almost surely in \(W_2\) under the finite-second-moment 
 24. Koehler, F., Mehta, V., and Risteski, A. [Representational aspects of depth and conditioning in normalizing flows](https://proceedings.mlr.press/v139/koehler21a.html). ICML, PMLR 139:5628–5636, 2021.
 25. Verine, A., et al. [On the expressivity of bi-Lipschitz normalizing flows](https://proceedings.mlr.press/v189/verine23a.html). PMLR 189:1054–1069, 2023.
 26. Bandeira, A. S., Singer, A., and Strohmer, T. [Topics in Mathematics of Data Science](https://www.math.ucdavis.edu/~strohmer/papers/2025/MDS_Book.pdf). Preprint v1.0, 2025, Proposition 8.8.
+
+27. Furuya, T., Taniguchi, K., and Okuda, S. [Quantitative Approximation for Neural Operators in Nonlinear Parabolic Equations](https://proceedings.iclr.cc/paper_files/paper/2025/hash/d4b6ccf3acd6ccbc1093e093df345ba2-Abstract-Conference.html). ICLR, 2025; preprint first posted in 2024.
+28. Calvello, E., Kovachki, N. B., Levine, M. E., and Stuart, A. M. [Continuum Attention for Neural Operators](https://www.jmlr.org/papers/v26/24-0879.html). JMLR 26(300):1–52, 2025.
 
 ## Cite this note
 
