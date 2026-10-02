@@ -184,9 +184,22 @@ $$
 
 The second identity follows by substituting the first into the chain rule. Along a sufficiently regular trajectory, the loss decreases at a rate equal to the squared gradient norm. Convergence to a global minimum additionally depends on the objective.
 
+What does the choice of inner product change in a PDE solve? We can hold the energy and its minimizer fixed, then compare two updates: subtract the PDE residual at each location, or first convert that residual into a direction using the PDE's energy inner product.
+
 #### The same PDE energy under two geometries
 
-Consider the Dirichlet energy on a bounded domain with homogeneous boundary conditions:
+Suppose we want to find a scalar field \(u^*\) on a bounded domain \(\Omega\), given a source \(f\). The equation and boundary condition to solve are
+
+$$
+\begin{cases}
+-\Delta u^*(x)=f(x), & x\in\Omega,\\
+u^*(x)=0, & x\in\partial\Omega.
+\end{cases}
+$$
+
+This is the Poisson problem with homogeneous Dirichlet boundary conditions. For example, it describes a steady temperature field with unit conductivity, heat source \(f\), and zero boundary temperature. We want an update that moves a candidate field \(u\) toward this solution.
+
+A variational way to solve this PDE is to minimize the Dirichlet energy
 
 $$
 \mathcal E(u)=\frac12\int_\Omega|\nabla u|^2\,dx
@@ -194,7 +207,9 @@ $$
 \qquad u\in H_0^1(\Omega).
 $$
 
-For \(f\in L^2(\Omega)\) on a suitable domain, differentiating this energy in direction \(h\) gives
+The space \(H_0^1(\Omega)\) encodes the zero boundary condition and square-integrable first derivatives.
+
+For \(f\in L^2(\Omega)\) on a suitable domain, differentiating this energy in direction \(h\in H_0^1(\Omega)\) gives
 
 $$
 D\mathcal E(u)[h]
@@ -202,14 +217,47 @@ D\mathcal E(u)[h]
 -\int_\Omega fh\,dx.
 $$
 
-Now compare two ways of turning this derivative into a function. In the \(L^2\) geometry, integration by parts gives the formal gradient \(-\Delta u-f\), on a domain where the required derivatives exist. In the energy geometry, with \(\langle g,h\rangle_{H_0^1}=\int_\Omega\nabla g\cdot\nabla h\,dx\), the gradient satisfies
+At the minimizer, this derivative is zero for every admissible \(h\). That is exactly the weak form of the Poisson equation above. The energy therefore gives us an optimization objective for finding its solution; now we can compare how two gradient choices reduce that same objective.
+
+Write \(A=-\Delta\) for the weak Dirichlet operator and \(r_k=Au_k-f\) for the current PDE residual. Integration by parts identifies the formal \(L^2\) gradient as this residual. In the energy inner product, the gradient \(g\) instead satisfies
 
 $$
 \int_\Omega\nabla g\cdot\nabla h\,dx
 =D\mathcal E(u)[h].
 $$
 
-Writing \(A=-\Delta\) for the weak Dirichlet operator, the last equation says \(Ag=Au-f\), hence \(g=u-A^{-1}f\). The two gradients are related by an inverse elliptic operator. They describe descent for the same energy using different geometries, with different computational costs. The \(L^2\) expression needs the additional operator-domain regularity above; the energy itself is defined on \(H_0^1\).
+The last equation says \(Ag=Au-f\), hence \(g=A^{-1}(Au-f)=u-u^*\). This gives a direct comparison:
+
+| For the same energy \(\mathcal E\) | Residual update in \(L^2\) | Energy-metric update in \(H_0^1\) |
+| --- | --- | --- |
+| Inner product | \(\int_\Omega gh\,dx\) | \(\int_\Omega\nabla g\cdot\nabla h\,dx\) |
+| Gradient at \(u_k\) | \(r_k=Au_k-f\) | \(A^{-1}r_k=u_k-u^*\) |
+| Descent step | \(u_{k+1}=u_k-\eta r_k\) | \(u_{k+1}=u_k-\eta A^{-1}r_k\) |
+| How the field changes | Subtract the residual at each location | Solve \(Ag_k=r_k\), then subtract that whole correction field |
+| Work needed for the direction | Evaluate the PDE residual | Apply an inverse elliptic operator to the residual |
+
+**Both columns are functional gradient descent.** Here, “pointwise” describes how the residual is subtracted, not independent optimization at each point: the Laplacian already couples neighboring values. The energy metric adds a global elliptic solve that converts the residual into a correction. The \(L^2\) expression requires \(Au\in L^2\); the energy and its weak gradient are defined on \(H_0^1\). Boundary conditions must also be enforced in a numerical update.
+
+The difference is especially visible for a rapidly oscillating error. On \(\Omega=(0,\pi)\), choose \(f(x)=\sin x\), so \(u^*(x)=\sin x\), and let
+
+$$
+u_k(x)=\sin x+\delta\sin(nx),\qquad n\in\mathbb N,\ n\geq2.
+$$
+
+The residual is \(r_k(x)=n^2\delta\sin(nx)\), whereas the energy gradient is \(A^{-1}r_k(x)=\delta\sin(nx)\). After one step, the two error amplitudes are
+
+$$
+\begin{aligned}
+\text{Residual update:}\quad
+u_{k+1}-u^*&=(1-\eta n^2)\delta\sin(nx),\\
+\text{Energy-metric update:}\quad
+u_{k+1}-u^*&=(1-\eta)\delta\sin(nx).
+\end{aligned}
+$$
+
+For the residual update, higher frequencies require a smaller explicit step: this mode contracts only when \(0<\eta<2/n^2\). The energy-metric update contracts every mode by the same factor for \(0<\eta<2\). Its favorable scaling comes at a cost: computing \(A^{-1}r_k\) requires an elliptic solve. In this linear example, an exact energy-gradient step with \(\eta=1\) already solves the original problem; the inverse operator is doing that work.
+
+This example separates two design decisions. The inner product determines **which correction field we want**. Once that geometry is chosen, an implementation still needs to **represent and approximate the correction accurately**. Adaptive FGD addresses this second decision.
 
 #### Adaptive approximation of the gradient
 
