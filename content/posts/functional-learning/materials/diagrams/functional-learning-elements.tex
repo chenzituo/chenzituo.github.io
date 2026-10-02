@@ -42,18 +42,20 @@
     \(\displaystyle \partial_\tau u=v_\tau(u)\)
   };
   \draw[arrow] (problem.south) -- (0,-1.98);
-  \node[box, fill=panel, text width=13.8cm, minimum height=3.15cm] (numerical) at (0,-8.05) {
+  \node[box, anchor=north, fill=panel, text width=13.8cm, minimum height=4.05cm] (numerical) at (0,-6.8) {
     {\Large\bfseries Realize the motion in coordinates}\\[10pt]
-    \(z \ \xrightarrow{\quad D_m\quad}\ u\)\\[9pt]
-    \(\displaystyle D_m'(z)\dot z\ \approx\ V_r(D_m(z);a)\)\\[9pt]
+    \(z_m\in\mathbb R^{d_m} \ \xrightarrow{\quad D_m\quad}\ u\)\\[9pt]
+    \(\displaystyle D_m'(z_m)\dot z_m\ \approx\ V_r(D_m(z_m);a)\)\\[9pt]
+    Refinement: \(z_{m'}=P_{m\to m'}z_m,\quad d_{m'}>d_m\)\\[9pt]
+    Preserve the field: \(D_{m'}(P_{m\to m'}z_m)=D_m(z_m)\)\\[9pt]
     Representation, quadrature, and integration
   };
   \coordinate (join) at (0,-6.04);
   \draw[draw=line, line width=.8pt] (fgd.south) |- (join);
   \draw[draw=line, line width=.8pt] (ffm.south) |- (join);
   \draw[arrow] (pde.south) -- (numerical.north);
-  \node[heading] (check) at (0,-10.77) {Check the result on functions};
-  \node[font=\large] at (0,-11.42) {Fields, derivatives, observables, and laws};
-  \draw[arrow] (numerical.south) -- (0,-10.22);
+  \node[heading,below=8mm of numerical] (check) {Check the result on functions};
+  \node[font=\large,below=4mm of check] {Fields, derivatives, observables, and laws};
+  \draw[arrow] (numerical.south) -- (check.north);
 \end{tikzpicture}
 \end{document}
