@@ -880,27 +880,31 @@ For coupled random initial states, an RMS version gives a corresponding Wasserst
 
 ## 6. Outlook
 
-The established examples show what the functional formulation lets us specify and compute. Four questions follow from its engineering and accuracy requirements.
+Two directions follow from treating PDE solutions as functions: improve corrections to individual solutions, and generate their uncertainty more faithfully. The first two topics concern solvers; the last two concern distributions. Here \(H\) is a Hilbert space of fields whose norm measures relevant physical errors.
 
-### Diagnosing blocked functional descent
+### Diagnosing stalled training {#diagnosing-blocked-functional-descent}
 
-**Can parameter optimization stall while a useful functional correction remains?** A PINN can already lie in \(H\); \(J_\theta J_\theta^*\) can help or hinder descent. [PINN neural tangent kernel analysis](https://arxiv.org/abs/2007.14527) studies related training-rate imbalances.
-
-Fix the loss and \(H\). With \(g=\nabla_H\mathcal L(u_\theta)\ne0\) and \(\Pi_\theta\) projecting onto \(\operatorname{range}J_\theta\), record
+When a PINN stalls, a useful field correction may remain. For its field \(u_\theta\) and PDE loss \(\mathcal L\), let \(g=\nabla_H\mathcal L(u_\theta)\) be the functional gradient and \(J_\theta=\partial_\theta u_\theta\) the Jacobian mapping weight changes to field changes. In continuous training time, Euclidean weight descent induces
 
 $$
-\rho_\theta=\frac{\|(I-\Pi_\theta)g\|_H}{\|g\|_H},
-\qquad
-\frac{d\mathcal L}{ds}=-\|J_\theta^*g\|^2.
+\dot u_\theta=-J_\theta J_\theta^*g.
 $$
 
-Using Section 4's Gram projection, \(\rho_\theta\) measures the unavailable correction. When it is small, inspect the nonzero Gram eigenvalues and corresponding field modes for poorly scaled directions. Loss curvature and the optimizer also matter.
+Two causes deserve investigation: unreachable corrections and poorly scaled reachable ones. [PINN neural tangent kernel analysis](https://arxiv.org/abs/2007.14527) studies related training-rate imbalances.
 
-A proposed Poisson test would compare Euclidean descent, Gram-corrected descent with the same network, and adaptive functional descent at matched solution accuracy, recording diagnostics and total cost. Does metric correction suffice, or must the representation gain directions? Accurate FGD realization remains necessary; a speedup is not guaranteed.
+For nonzero \(g\), a proposed diagnostic is
 
-### Learned corrections with solver guarantees
+$$
+\rho_\theta=\frac{\|(I-\Pi_\theta)g\|_H}{\|g\|_H}.
+$$
 
-FGD suggests a complementary object to learn: an update of the current solution. We could use a learned solution map for initialization and then refine the field:
+Here \(\Pi_\theta g\) is the closest reachable correction, computed by least-squares fitting the Jacobian's field directions to \(g\). Large \(\rho_\theta\) indicates missing directions. With small \(\rho_\theta\), inspect the Gram matrix \(J_\theta^*J_\theta\) for poor scaling, alongside curvature and optimizer effects.
+
+A Poisson test could compare ordinary descent, Gram-preconditioned descent with the same network, and adaptive functional descent. Match solution accuracy and record the diagnostic, conditioning, and total cost. Does correcting the geometry suffice, or are new directions needed?
+
+### Learning reliable solution corrections {#learned-corrections-with-solver-guarantees}
+
+We could learn both an initial field and subsequent corrections. Let \(a\) collect PDE coefficients, forcing, and boundary or initial conditions. A proposed solver is
 
 $$
 u^{(0)}=\mathcal S_\theta(a),
@@ -908,66 +912,56 @@ u^{(0)}=\mathcal S_\theta(a),
 \frac{du_s}{ds}=V_\theta(u_s;a).
 $$
 
-This is a proposed solver design. Its update might approximate a functional gradient, a preconditioned residual correction, or another justified numerical step. A gradient approximation can inherit a descent guarantee only when the geometry, error tolerance, and step conditions needed by that guarantee hold. Small PDE residuals also need a problem-specific stability estimate before they imply small solution errors.
+Here \(\mathcal S_\theta\) predicts the initial field and \(s\) is solver iteration time. The correction model \(V_\theta\) would train on intermediate fields and useful update directions, such as a functional gradient or a preconditioned PDE residual.
 
-Does learning updates transfer better across problems and meshes than learning only endpoints? Compare endpoint training with training on states and update directions, including correction cost at matched solution accuracy.
+Reliability requires a justified progress criterion. An approximate gradient needs sufficient accuracy and suitable steps to decrease the objective. A small residual implies a small solution error only when the PDE provides a corresponding stability estimate.
 
+Compare prediction with and without corrections at matched accuracy, including correction cost. Vary coefficients and meshes to test transfer.
 
-### Adaptive representations that preserve evolving laws
+### Adapting representations during generation {#adaptive-representations-that-preserve-evolving-laws}
 
-FFM learns a time-dependent operator \(v_\theta(\tau,\cdot):H\to H\), connecting velocity learning to FOL. **Could its representation adapt to both \(\tau\) and the current field?**
-
-Training residuals may suggest where more resolution is useful, but Section 3 shows they include conditional variability. A minibatch loss alone cannot certify marginal-velocity accuracy or prescribe refinement.
-
-**The velocity's definition matters.** Section 4 projects a specified field velocity into coordinates. [FunDiff](https://arxiv.org/html/2506.07902v2) predicts a code velocity \(g_{\theta,m}\) directly; for a fixed decoder, the chain rule gives
+Could capacity follow generative time \(\tau\) and the current sample? In a latent flow such as [FunDiff](https://arxiv.org/html/2506.07902v2), \(z\) is the finite code, \(D_m\) its decoder, and \(m\) its capacity. The model \(g_{\theta,m}\) predicts the code velocity:
 
 $$
-\dot z=g_{\theta,m}(\tau,z),
+\frac{dz}{d\tau}=g_{\theta,m}(\tau,z),
 \qquad
-\dot u=D_m'(z)g_{\theta,m}(\tau,z).
+u=D_m(z).
 $$
 
-The decoder derivative converts code motion into field motion; it does not supply a desired velocity. Comparing that motion with itself gives zero. A mismatch indicator needs a separately evaluated reference:
+For fixed \(D_m\), its Jacobian \(D_m'(z)\) gives field velocity \(D_m'(z)g_{\theta,m}\) by the chain rule. More decoder queries refine evaluation; enlarging the code requires a compatible decoder and velocity model.
+
+The refinement signal remains open. Different sampled paths can give different target velocities at the same state. A minibatch loss therefore mixes learning error with this variability. One candidate during generation is to compare decoded velocities from compatible coarse and fine flows at the same field and time. This consistency test needs control of reference, transfer, and integration errors before it supplies an error bound.
+
+New coordinates need the intended conditional law. For orthonormal modes \(e_1,e_2\), a coarse code \(X\) might need extension to \(U=Xe_1+Ye_2\) with
 
 $$
-e_{\mathrm{ref}}(\tau,z;m)
-=\|D_m'(z)g_{\theta,m}(\tau,z)
--v_{\mathrm{ref}}(\tau,D_m(z))\|_H.
+Y\mid X\sim\mathcal N(\alpha X,\sigma^2).
 $$
 
-A compatible finer flow at the same time and field could supply the reference, accounting for transfer and reference errors. This is a consistency indicator, not a pure representation-error certificate. Enlarging the code requires a compatible velocity model; more decoder queries only refine evaluation.
+Appending zero misses variability; independent noise misses the coupling to \(X\). Refinement must respect the conditional law at that time.
 
-Transfers must also control field error and newly resolved randomness. Suppose the coarse field stores \(X\), while the intended fine field is
+[Adaptive Flow Matching](https://proceedings.mlr.press/v267/fotiadis25a.html) and [Scale-Adaptive Generative Flows](https://arxiv.org/abs/2509.02971v2) adapt sources or schedules. A representation hierarchy adds coordinate transfers and laws for newly resolved modes.
 
-$$
-U=Xe_1+Ye_2,\qquad
-Y=\rho X+\sigma\epsilon,\quad
-\epsilon\sim\mathcal N(0,1)
-$$
+Compare fixed fine, time-only, and state-dependent representations on Gaussian laws with known velocities. Match generated-law accuracy and record derivative statistics, correlations, and total cost.
 
-with independent \(X,\epsilon\). Copying into \((X,0)\) misses fine-scale variability; adding independent noise misses the correlation. New coefficients need the conditional law at refinement time.
+### Conditioning the source and target laws {#sources-conditioned-on-physics-and-observations}
 
-[Adaptive Flow Matching](https://proceedings.mlr.press/v267/fotiadis25a.html) and [Scale-Adaptive Generative Flows](https://arxiv.org/abs/2509.02971v2) adapt sources or schedules. Refining coordinates additionally requires preserving the field and its intended law.
+The source is the starting law over random functions. Its covariance allocates uncertainty among field modes. For a PDE inverse problem, boundaries, coefficients, and observations can change both the uncertain scales and their correlations.
 
-Test Gaussian laws with known velocities: compare fixed fine, time-only, and state-dependent representations at matched endpoint accuracy. Measure derivative statistics, mode correlations, and total cost, including transfers and error estimation.
+We could condition the source on this information and learn a transport to a specified conditional solution law. Does a better-aligned source make transport easier?
 
-
-### Sources conditioned on physics and observations
-
-A source covariance describes which functions are plausible before transport. Compatible spectra can keep a transport regular, but a marginal field covariance may be poorly suited to a conditional inverse problem. Boundaries, forcing, and measurements can change both the uncertain scales and their correlations.
-
-This points toward context-dependent functional sources, constraint-preserving velocities, and transports informed by PDE stability. Evaluate the generated law alongside physical residuals and observables; accurate-looking samples do not determine uncertainty calibration.
-
-An appealing shortcut is to add a physical correction to an already trained generative velocity:
+Another possibility is physical guidance:
 
 $$
 v_\tau^{\mathrm{guided}}(u)
-=v_\tau(u)-\lambda_\tau\nabla_H\mathcal L(u).
+=v_\tau(u)-\lambda_\tau\nabla_H\mathcal L_{\mathrm{phys}}(u).
 $$
 
-This changes the transport and generally changes its endpoint law. It is a new sampling model whose target must be justified or evaluated. A more deliberate connection would specify the desired law first, then design or learn a velocity for it. The open question is how physical information can help learn that transport without losing the uncertainty we intended to represent.
+Here \(v_\tau\) is the generative velocity, \(\mathcal L_{\mathrm{phys}}\) measures physical mismatch, and \(\lambda_\tau\) sets the correction strength. The correction changes the transport and generally its endpoint law. A lower physical loss therefore does not establish correct uncertainty.
 
-The title's reinterpretation is therefore consequential: a latent code is a way to compute with a function through a decoder. Carrying that meaning through the whole model lets the same solution be observed, differentiated, corrected, and sampled. Functional learning is especially valuable when a PDE application needs several of these capabilities together. The research opportunity is to make their mathematical compatibility translate into reliable computation.
+A linear-Gaussian inverse problem with a known posterior provides a first test. Compare sources and velocities using physical residuals, posterior moments, uncertainty calibration, and sampling cost.
+
+A functional formulation specifies which updates, errors, and laws should agree across discretizations. Its value for PDE learning becomes concrete when that agreement improves physical predictions and yields a reliable solver or a trustworthy ensemble at an affordable cost.
 
 ## References
 
