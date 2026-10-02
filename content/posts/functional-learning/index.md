@@ -256,38 +256,43 @@ $$
 \leq\varepsilon\|g_k\|_H.
 $$
 
-For a \(K\)-smooth functional, the descent calculation gives
+Write \(L_{\rm sm}\) for the loss smoothness constant—the paper's \(K\), distinct from a kernel. It bounds the quadratic remainder of the loss in the chosen norm. In the Hilbert-space case, the descent calculation gives
 
 $$
 \begin{aligned}
 \mathcal L(u_k-\eta g_k)
 &\leq\mathcal L(u_k)\\
-&\quad-\eta\left(1-\varepsilon-\frac{K\eta}{2}\right)
+&\quad-\eta\left(1-\varepsilon-\frac{L_{\rm sm}\eta}{2}\right)
 \|g_k\|_H^2.
 \end{aligned}
 $$
 
 The coefficient in parentheses determines whether the approximate update still decreases the loss. As the gradient becomes small, a fixed absolute approximation error can overwhelm it; a relative criterion tightens the accuracy accordingly. This Hilbert-space estimate follows from \(\langle\nabla_H\mathcal L,g_k\rangle_H\ge(1-\varepsilon)\|g_k\|_H^2\) and the smoothness inequality.
 
-Figure 2 shows the numerical consequence in the paper's toy reconstruction example. The fixed representations eventually plateau, while the adaptive representation adds detail and continues reducing the loss. The figure compares particular methods on this example.
+In the paper's toy reconstruction, fixed representations plateau while the adaptive representation adds detail and reduces the loss (Figure 2).
 
 {{< figure src="figures/fgd-adaptive.png" link="figures/fgd-adaptive.png" alt="Three reconstruction sequences and training-loss curves comparing a neural network, fixed-resolution functional gradients, and adaptive functional gradients." caption="**Figure 2.** Reconstructions and loss curves in the FGD toy example, comparing neural, fixed, and adaptive representations. Source: [Csillag et al., Figure 1](https://arxiv.org/abs/2606.16926v1), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)." >}}
 
-The paper's algorithm uses a computable error bound for its refinement test. Its analysis also allows approximations in a larger Banach space than the Hilbert space defining the gradient. Under its extension, compatibility, smoothness, and step-size assumptions, the authors bound the minimum squared gradient norm over iterations; a Polyak–Łojasiewicz-type condition gives a geometric objective-gap bound. The full conditions are in [Section 3](https://arxiv.org/abs/2606.16926).
+The paper also allows approximations in a larger Banach space \(B\). At a nonstationary iterate, Algorithm 1 holds the current function fixed, fits \(g_m\), and computes
+
+$$
+U_m\ge\|g_m-\nabla\mathcal L(u)\|_B,
+\qquad S_m=\|g_m\|_B.
+$$
+
+It refines, transfers the current function, and refits until
+
+$$
+\boxed{(1+\epsilon)U_m<\epsilon S_m,\qquad 0<\epsilon<1,}
+$$
+
+then applies \(u^+=u-\eta g_m\). This compares gradient error with gradient size; multiplying both by \(\eta\) gives the same relative update error. Smoothness controls the step size, while this test controls representation accuracy. The Banach-space theorem additionally needs the paper's gradient-compatibility assumptions ([Algorithm 1 and Section 3](https://arxiv.org/html/2606.16926v1#S3)).
 
 Functional gradients and inexact-gradient methods predate this paper. Its distinctive contribution is adaptive gradient representations with computable error tests and convergence guarantees under its stated assumptions.
 
 #### Three representations for functional updates {#two-applications-wave-equations-and-inverse-rendering}
 
 FGD's three main experiments use different coordinates for their functions. **Only the wave-equation example uses a Fourier representation.** The following descriptions combine the paper's [Section 4 and Appendix B](https://arxiv.org/html/2606.16926v1#S4) with static inspection of the authors' [released implementation](https://github.com/dccsillag/experiments-adaptive-fgd/tree/57f0bab8df7bd3fe5e4d1ff8c23953989c62befc); they do not reproduce the reported runs.
-
-| Case | What the finite code \(z_m\) stores | Decoder \(D_m\) | How capacity grows |
-| --- | --- | --- | --- |
-| RKHS regression | One value per tree leaf | Return the value in the leaf containing \(x\) | Split leaves and add independently updateable values |
-| Wave equation | Complex values per frequency bin | Inverse Fourier transform of the frequency-bin function | Subdivide the frequency grid |
-| Inverse rendering | Density and RGB spherical-harmonic coefficients per voxel | Evaluate the voxel's density and directional color | Subdivide the spatial voxel grid |
-
-In these nested representations, refinement first transfers the current function into more coordinates. Recomputing and applying the gradient then uses the extra freedom to change the function.
 
 ##### Case 1: RKHS regression with a tree representation
 
@@ -311,15 +316,25 @@ This makes a loss on observed point values compatible with the function-space ca
 
 For the RBF kernel below, \(K(X,\cdot)\) is a smooth bump centered at \(X\); \(\gamma\) controls its width. An observation's loss derivative therefore contributes a bump to the whole correction field. Overlapping bumps make observations influence updates away from their own locations.
 
-The kernel specifies this gradient geometry. The tree is a separate numerical representation used to store the current function and approximate the correction. For half-MSE, with \(r_i=u_m(X_i)-Y_i\),
+The kernel specifies this gradient geometry. The tree separately stores the current function and approximates the correction. With residuals \(r_i=u_m(X_i)-Y_i\), the half-MSE loss is
 
 $$
-\mathcal L(u)=\frac1{2N}\sum_i(u(X_i)-Y_i)^2,
-\qquad
-D\mathcal L(u)[h]=\frac1N\sum_i r_i h(X_i).
+\mathcal L(u)=\frac1{2N}\sum_i(u(X_i)-Y_i)^2.
 $$
 
-Using the reproducing identity in the directional derivative gives the correction field
+For an arbitrary perturbation \(h\in\mathcal H_K\),
+
+$$
+\begin{aligned}
+D\mathcal L(u_m)[h]
+&=\frac1N\sum_i r_i h(X_i)\\
+&=\left\langle
+\frac1N\sum_i r_iK(X_i,\cdot),h
+\right\rangle_{\mathcal H_K}.
+\end{aligned}
+$$
+
+This holds for every \(h\), so no directions need to be enumerated. The residuals are scalar weights; the kernel functions supply the directions. Riesz representation identifies the correction field
 
 $$
 g(x)=\frac1N\sum_i r_i K(X_i,x),
@@ -328,7 +343,19 @@ $$
 
 This is differentiation with respect to the **function's values**, not spatial differentiation of the tree. No \(\partial_xu_m\) is required. For cross-entropy, the scalar loss derivative replaces \(r_i\). The paper permits the tree and approximate gradient to live in a larger space of bounded functions, even though they generally do not belong to the RKHS defining the gradient ([Section 4.1 and Appendix A.1.2](https://arxiv.org/html/2606.16926v1#S4.SS1)).
 
-With a fixed partition, the code samples \(g\) at each leaf center \(c_j\), stores \(b_j=g(c_j)\), and updates \(z_j^+=z_j-\eta b_j\). A Lipschitz bound times the leaf radius controls the gradient approximation error. If its relative-error test fails, the implementation splits **every leaf** at the midpoint of its widest feature interval, copies the parent value to both children, and refits the gradient on the finer partition. This adds capacity without adding observations or differentiating split thresholds ([regression code](https://github.com/dccsillag/experiments-adaptive-fgd/blob/57f0bab8df7bd3fe5e4d1ff8c23953989c62befc/src/kernel-regression/ours.py#L95-L191)).
+Half-MSE has \(L_{\rm sm}=1\) in the supremum norm: its quadratic remainder is \((2N)^{-1}\sum_i h(X_i)^2\le\frac12\|h\|_\infty^2\). In the RKHS norm its sharp constant is instead \(\lambda_{\max}(G)/N\), where \(G_{ij}=K(X_i,X_j)\). The code's logit cross-entropy has a supremum-norm bound \(L_{\rm sm}\le1/4\); probability-valued cross-entropy needs a range away from zero and one for a finite uniform bound.
+
+The tree fits \(b_j=g(c_j)\) at each leaf center. With \(R_j\) its radius, the RBF kernel gives a spatial Lipschitz bound and a computable error bound:
+
+$$
+L_g^{\rm space}=
+\frac1N\sum_i|r_i|\sqrt{\frac{2\gamma}{e}},
+\qquad
+U_m=L_g^{\rm space}\max_jR_j,
+\qquad S_m=\max_j|b_j|.
+$$
+
+This spatial bound differs from loss smoothness. On the represented domain, \(U_m\) bounds the sup-norm gradient error. The code accepts \(U_m/S_m<1/3\), or exits at depth 16. Otherwise it splits **every leaf** along its widest interval, copies parent values, and refits before updating \(z_j^+=z_j-\eta b_j\) ([regression code](https://github.com/dccsillag/experiments-adaptive-fgd/blob/57f0bab8df7bd3fe5e4d1ff8c23953989c62befc/src/kernel-regression/ours.py#L154-L287)).
 
 {{< figure src="figures/fgd-tree-representation.svg" link="figures/fgd-tree-representation.svg" width="720" alt="A tree partition with two constant leaf values is split into four leaves by copying parent values. The same observation locations remain in place. A subsequent kernel-gradient update changes the four values independently." caption="**Figure 3.** What grows in regression: the vector of leaf values. Copying preserves the current function; a newly fitted gradient changes it. The numerical values illustrate the two stages and are not experimental results. Original LaTeX/TikZ schematic based on the [released regression implementation](https://github.com/dccsillag/experiments-adaptive-fgd/blob/57f0bab8df7bd3fe5e4d1ff8c23953989c62befc/src/kernel-regression/ours.py)." >}}
 
@@ -346,6 +373,8 @@ $$
 
 The loss combines its wave-equation residual with initial-condition penalties, much as a space-time PINN objective does ([FGD, Section 4.2](https://arxiv.org/html/2606.16926v1#S4.SS2)).
 
+For the paper's loss, collect the wave residual and two initial traces into a bounded linear operator \(A:H^2\to Y\). Then \(\mathcal L(u)=\frac12\|Au-b\|_Y^2\), so \(L_{\rm sm}=\|A\|^2\) is a smoothness bound. Determining its numerical value requires the operator norms and the chosen normalizations.
+
 Here the stored values describe the Fourier transform, not physical grid-point values. For frequency cells \(Q_j\), write
 
 $$
@@ -355,11 +384,22 @@ $$
 
 where \(\kappa\) contains one temporal and two spatial frequencies. The coefficients \(z_j\) are complex. An inverse-transformed frequency box is a modulated product of sinc functions, so constants in frequency space produce a continuous field in physical space. PDE derivatives can be evaluated through this synthesis; under the angular-frequency convention, for example, \(\mathcal F[\partial_t^2u]=-\kappa_0^2\widehat u\). The paper derives the \(H^2\)-gradient directly in Fourier coordinates.
 
-The released code doubles the bin count along all three axes, copies every parent value into eight children, and recomputes the Fourier-gradient approximation at the finer bin centers. Thus \(n^3\) complex values become \((2n)^3\), while copying alone preserves \(\widehat u_m\) and its decoded field. The frequency box stays fixed: subdivision does not extend the frequency cutoff ([Fourier representation and subdivision](https://github.com/dccsillag/experiments-adaptive-fgd/blob/57f0bab8df7bd3fe5e4d1ff8c23953989c62befc/src/wave-equation/sandbox_ours.py#L145-L155)).
+The code fits the Fourier gradient at bin centers, then samples eight random offsets per bin to estimate
+
+$$
+\widehat r_m^2=
+\frac{\sum_j|Q_j|\,\operatorname{mean}_{q}
+ w(\kappa_{jq})|\widehat g_m(\kappa_{jq})-\widehat g(\kappa_{jq})|^2}
+{\sum_j|Q_j|\,\operatorname{mean}_{q}
+ w(\kappa_{jq})|\widehat g_m(\kappa_{jq})|^2},
+\quad w(\kappa)=1+|\kappa|^2+|\kappa|^4.
+$$
+
+If the test fails, it doubles all three axes, copies parents into eight children, and refits. The frequency box remains fixed. The inspected script stops at \(\widehat r_m\le50\) or side length 128 and uses \(\eta=0.1\). **That threshold does not enforce Algorithm 1's small relative error.** The sampled test also omits an outside-box error bound; Appendix B.2 describes a stronger protocol ([fitting and test](https://github.com/dccsillag/experiments-adaptive-fgd/blob/57f0bab8df7bd3fe5e4d1ff8c23953989c62befc/src/wave-equation/sandbox_ours.py#L195-L292), [loop](https://github.com/dccsillag/experiments-adaptive-fgd/blob/57f0bab8df7bd3fe5e4d1ff8c23953989c62befc/src/wave-equation/sandbox_ours.py#L424-L433)).
 
 {{< figure src="figures/fgd-fourier-representation.svg" link="figures/fgd-fourier-representation.svg" width="720" alt="A two-dimensional slice of a Fourier grid shows coarse constant bins, finer bins holding copied parent values, and independently changed fine-bin coefficients after descent. An inverse Fourier transform decodes these values into a physical field." caption="**Figure 4.** What grows in the wave solve: frequency-bin coefficients. The full representation has three frequency axes; the diagram shows a two-dimensional slice. Refinement preserves the transform before the gradient update. Original LaTeX/TikZ schematic based on the [released wave implementation](https://github.com/dccsillag/experiments-adaptive-fgd/blob/57f0bab8df7bd3fe5e4d1ff8c23953989c62befc/src/wave-equation/sandbox_ours.py)." >}}
 
-In Figure 5, each column is a physical-time slice of the resulting function; the middle row shows adaptive FGD and the bottom row the reference solution. These plotted samples evaluate the solution; their count is separate from the number of coefficients used to represent it.
+Figure 5 shows physical-time slices of the optimized function. The plotted sample count is separate from its coefficient count.
 
 {{< figure src="figures/fgd-wave-solution.png" link="figures/fgd-wave-solution.png" alt="Six physical-time snapshots of a wave solution: neural network approximation, adaptive functional gradient descent, and reference solution in three rows." caption="**Figure 5.** Physical-time slices of the wave solution: neural approximation, adaptive FGD, and reference, from top to bottom. Source: [Csillag et al., Figure 3](https://arxiv.org/abs/2606.16926v1), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)." >}}
 
@@ -381,17 +421,32 @@ $$
 d_m=n^3\bigl[1+3(L+1)^2\bigr].
 $$
 
-The default code fits density-gradient values and color-gradient harmonic coefficients using eight spatial samples per voxel and viewing directions. When the relative fitting-error estimate is too large, it doubles spatial resolution along every axis and copies each parent's density and full color-coefficient tuple into eight children. It then refits the gradients and applies separate density and color learning rates. **Spatial capacity grows; the angular degree \(L\) remains fixed.** This is global grid refinement, rather than selective octree refinement ([representation](https://github.com/dccsillag/experiments-adaptive-fgd/blob/57f0bab8df7bd3fe5e4d1ff8c23953989c62befc/src/functional_radiance/models/our_model/representation.py#L268-L332), [training loop](https://github.com/dccsillag/experiments-adaptive-fgd/blob/57f0bab8df7bd3fe5e4d1ff8c23953989c62befc/src/functional_radiance/models/our_model/train.py#L583-L647)).
+Loss smoothness here requires a uniform bound on the rendering loss's Hessian over admissible states. Its curvature depends on the current fields; the inspected code does not compute a global \(L_{\rm sm}\).
+
+The default code samples eight spatial points per voxel, averages density gradients, and fits color gradients in the fixed spherical-harmonic basis. It reports a volume-weighted fitting-loss estimate \(E_{\rm fit}\), then tests
+
+$$
+\widehat r_m=
+\sqrt{\frac{E_{\rm fit}}{S_\sigma^2+S_c^2}},
+\qquad
+S_\sigma^2+S_c^2=
+\sum_v|V_v|\left[
+\widehat g_{\sigma,v}^2+
+\sum_{\ell,m}\|\widehat a_{v,\ell m}\|_{\mathbb R^3}^2
+\right].
+$$
+
+It accepts \(\widehat r_m<0.4\), or exits when a grid side reaches 128 or fixed-grid mode is enabled. Otherwise it doubles every spatial axis, copies attributes, and refits before applying separate density/color learning rates. **The angular degree stays fixed.** \(E_{\rm fit}\) uses sampled density and angular losses; it is not a certified bound on the full gradient error ([fitting loss](https://github.com/dccsillag/experiments-adaptive-fgd/blob/57f0bab8df7bd3fe5e4d1ff8c23953989c62befc/src/functional_radiance/models/our_model/representation.py#L617-L719), [training loop](https://github.com/dccsillag/experiments-adaptive-fgd/blob/57f0bab8df7bd3fe5e4d1ff8c23953989c62befc/src/functional_radiance/models/our_model/train.py#L583-L647)).
 
 {{< figure src="figures/fgd-voxel-representation.svg" link="figures/fgd-voxel-representation.svg" width="720" alt="A spatial voxel is divided into eight children that inherit its density and RGB spherical-harmonic coefficient tuple. Each voxel stores density plus fixed-degree angular coefficients; only spatial resolution increases." caption="**Figure 6.** What grows in inverse rendering: the number of voxel attribute tuples in z. The spherical-harmonic basis stays fixed. The diagram shows one parent; the implementation refines the whole grid. Copying alone preserves the default fields, while additional visibility masking in the training loop can change density. Original LaTeX/TikZ schematic based on the released implementation." >}}
 
-Figure 7 advances optimization iterations across columns. The adaptive representation in the bottom row resolves finer plant leaves as optimization proceeds; the test-loss plot reports the comparison for this Ficus scene.
+Figure 7 shows finer plant leaves emerging during optimization and compares test losses for the Ficus scene.
 
 {{< figure src="figures/fgd-inverse-rendering.png" link="figures/fgd-inverse-rendering.png" alt="Novel-view renderings of a potted plant through optimization iterations, comparing a neural network, fixed-grid FGD, and adaptive FGD, with test-loss curves." caption="**Figure 7.** Inverse rendering of the Ficus scene through optimization iterations, with test-loss curves for neural, fixed, and adaptive FGD representations. Source: [Csillag et al., Figure 4](https://arxiv.org/abs/2606.16926v1), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)." >}}
 
-The practical error tests also differ. Regression uses an analytic Lipschitz bound on the represented domain; the inspected wave and rendering loops use sampled error estimates. All three impose capacity limits. The paper's convergence analysis requires its stated error bounds and assumptions, so these practical exits should not be described as automatically verifying the theorem.
+These checked-in settings are not recovered configurations of the plotted runs. The paths do not compute \(L_{\rm sm}\) to choose learning rates; the paper reports tuning them ([Section 4](https://arxiv.org/html/2606.16926v1#S4)). Verified error bounds and suitable step sizes are still required by the theorem.
 
-Across the three cases, \(z_m\) is a finite description of the current function, and adaptation expands its possible updates. None requires \(z_m\) to be a learned neural embedding. These methods seek one optimized function. If the problem data change, the desired function changes too; the next task learns a map that serves a family of problems.
+In each case, \(z_m\) describes one function and adaptation expands its possible updates. Changing the problem data changes the desired solution; the next task learns a map across problems.
 
 ### Functional operator learning (FOL): predicting across problems {#functional-operator-learning}
 
