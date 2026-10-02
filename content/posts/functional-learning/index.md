@@ -247,37 +247,37 @@ Thus a zero parameter gradient \(J_\theta^*g_N=0\) need not imply a zero functio
 
 #### Adaptive approximation of the gradient
 
-An ideal update is \(u_{k+1}=u_k-\eta\nabla_H\mathcal L(u_k)\). In practice, we have to represent both \(u_k\) and its gradient using finitely many degrees of freedom.
+An ideal update is \(u_{k+1}=u_k-\eta\nabla_H\mathcal L(u_k)\). Numerically, we use a finitely represented approximation \(\widehat g_k\) to that gradient.
 
-This is where adaptive FGD makes a specific choice. It refines the gradient representation until its approximation error is small relative to the update being taken. To see why this helps, consider the simpler Hilbert-space condition
+Adaptive FGD refines this representation until gradient error is small relative to the update. When the iterate and approximate gradient both lie in \(H\), a sufficient condition is
 
 $$
-\|g_k-\nabla_H\mathcal L(u_k)\|_H
-\leq\varepsilon\|g_k\|_H.
+\|\widehat g_k-\nabla_H\mathcal L(u_k)\|_H
+\leq\varepsilon\|\widehat g_k\|_H.
 $$
 
 Write \(L_{\rm sm}\) for the loss smoothness constant—the paper's \(K\), distinct from a kernel. It bounds the quadratic remainder of the loss in the chosen norm. In the Hilbert-space case, the descent calculation gives
 
 $$
 \begin{aligned}
-\mathcal L(u_k-\eta g_k)
+\mathcal L(u_k-\eta\widehat g_k)
 &\leq\mathcal L(u_k)\\
 &\quad-\eta\left(1-\varepsilon-\frac{L_{\rm sm}\eta}{2}\right)
-\|g_k\|_H^2.
+\|\widehat g_k\|_H^2.
 \end{aligned}
 $$
 
-The coefficient in parentheses determines whether the approximate update still decreases the loss. As the gradient becomes small, a fixed absolute approximation error can overwhelm it; a relative criterion tightens the accuracy accordingly. This Hilbert-space estimate follows from \(\langle\nabla_H\mathcal L,g_k\rangle_H\ge(1-\varepsilon)\|g_k\|_H^2\) and the smoothness inequality.
+The positive coefficient ensures descent. As the gradient shrinks, a fixed approximation error can overwhelm it; the relative criterion tightens accuracy accordingly. The estimate follows from \(\langle\nabla_H\mathcal L,\widehat g_k\rangle_H\ge(1-\varepsilon)\|\widehat g_k\|_H^2\) and the smoothness inequality.
 
-In the paper's toy reconstruction, fixed representations plateau while the adaptive representation adds detail and reduces the loss (Figure 2).
+For the toy reconstruction loss \(\mathcal L(u)=\frac12\|u-u^\star\|_{L^2}^2\), the exact gradient is \(u-u^\star\). Its closed form can still require approximation in the chosen finite representation. Fixed representations plateau while adaptation adds detail (Figure 2). This loss differs from the sampled RKHS loss below.
 
 {{< figure src="figures/fgd-adaptive.png" link="figures/fgd-adaptive.png" alt="Three reconstruction sequences and training-loss curves comparing a neural network, fixed-resolution functional gradients, and adaptive functional gradients." caption="**Figure 2.** Reconstructions and loss curves in the FGD toy example, comparing neural, fixed, and adaptive representations. Source: [Csillag et al., Figure 1](https://arxiv.org/abs/2606.16926v1), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)." >}}
 
-The paper also allows approximations in a larger Banach space \(B\). At a nonstationary iterate, Algorithm 1 holds the current function fixed, fits \(g_m\), and computes
+The paper also allows approximations in a larger Banach space \(B\). At a nonstationary iterate, Algorithm 1 holds the current function fixed, fits \(\widehat g_m\), and computes
 
 $$
-U_m\ge\|g_m-\nabla\mathcal L(u)\|_B,
-\qquad S_m=\|g_m\|_B.
+U_m\ge\|\widehat g_m-\nabla\mathcal L(u)\|_B,
+\qquad S_m=\|\widehat g_m\|_B.
 $$
 
 It refines, transfers the current function, and refits until
@@ -286,7 +286,7 @@ $$
 \boxed{(1+\epsilon)U_m<\epsilon S_m,\qquad 0<\epsilon<1,}
 $$
 
-then applies \(u^+=u-\eta g_m\). This compares gradient error with gradient size; multiplying both by \(\eta\) gives the same relative update error. Smoothness controls the step size, while this test controls representation accuracy. The Banach-space theorem additionally needs the paper's gradient-compatibility assumptions ([Algorithm 1 and Section 3](https://arxiv.org/html/2606.16926v1#S3)).
+then applies \(u^+=u-\eta\widehat g_m\). This compares gradient error with gradient size; multiplying both by \(\eta\) gives the same relative update error. Smoothness controls the step size, while this test controls representation accuracy. The Banach-space theorem additionally needs the paper's gradient-compatibility assumptions ([Algorithm 1 and Section 3](https://arxiv.org/html/2606.16926v1#S3)).
 
 Functional gradients and inexact-gradient methods predate this paper. Its distinctive contribution is adaptive gradient representations with computable error tests and convergence guarantees under its stated assumptions.
 
@@ -340,6 +340,8 @@ $$
 g(x)=\frac1N\sum_i r_i K(X_i,x),
 \qquad K(X_i,x)=\exp(-\gamma\|X_i-x\|^2).
 $$
+
+This kernel sum is **exact**. At a sample, \(g(X_j)=N^{-1}\sum_i r_iK(X_i,X_j)\): residuals elsewhere contribute too. The identity \(\nabla_H\mathcal L(u)=u-u^\star\) instead holds for \(\mathcal L=\frac12\|u-u^\star\|_H^2\), even in an RKHS. Approximation error arises when the tree fits \(g\) as a piecewise-constant \(\widehat g\).
 
 This is differentiation with respect to the **function's values**, not spatial differentiation of the tree. No \(\partial_xu_m\) is required. For cross-entropy, the scalar loss derivative replaces \(r_i\). The paper permits the tree and approximate gradient to live in a larger space of bounded functions, even though they generally do not belong to the RKHS defining the gradient ([Section 4.1 and Appendix A.1.2](https://arxiv.org/html/2606.16926v1#S4.SS1)).
 
