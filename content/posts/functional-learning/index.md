@@ -450,7 +450,7 @@ In each case, \(z_m\) describes one function and adaptation expands its possible
 
 ### Functional operator learning (FOL): predicting across problems {#functional-operator-learning}
 
-A per-problem optimization produces one solution. Operator learning produces a rule for obtaining solutions when the problem data change. Let \(\mathcal A\) be an input function space and \(\mathcal U\) an output function space. The object is
+Operator learning fits a shared map between input and output function spaces \(\mathcal A\) and \(\mathcal U\):
 
 $$
 \mathcal S:\mathcal A\to\mathcal U,
@@ -465,9 +465,9 @@ $$
 \|\mathcal S_\theta(a)-\mathcal S(a)\|_{\mathcal U}^2.
 $$
 
-Here \(\rho\) describes the input problems we expect to encounter. The same parameters \(\theta\) serve every input. In FGD, the unknown being updated was a function \(u\); here, the unknown being fitted is a map between functions. Training that map can still use ordinary parameter-space gradient descent.
+Here \(\rho\) describes the expected input problems. The same \(\theta\) serves every input. FGD fits one function; FOL fits a map between functions, and can train it by ordinary parameter descent.
 
-DeepONet and FNO are established examples of **functional operator learning (FOL)**. Here FOL names the learning task, rather than a new acronym assigned by the authors to their method. We use **Furuya, Taniguchi, and Okuda's [Quantitative Approximation for Neural Operators in Nonlinear Parabolic Equations](https://proceedings.iclr.cc/paper_files/paper/2025/hash/d4b6ccf3acd6ccbc1093e093df345ba2-Abstract-Conference.html)** as the mathematical example. Its construction connects operator layers to a convergent solution procedure. This lets us ask what each layer computes and why approximation errors remain controlled.
+DeepONet and FNO are established examples of **functional operator learning (FOL)**; FOL names the task. Our mathematical example is **Furuya, Taniguchi, and Okuda's [Quantitative Approximation for Neural Operators in Nonlinear Parabolic Equations](https://proceedings.iclr.cc/paper_files/paper/2025/hash/d4b6ccf3acd6ccbc1093e093df345ba2-Abstract-Conference.html)**. Its construction connects operator layers to a convergent solution procedure and controls their approximation errors.
 
 #### From a PDE to a fixed-point map
 
@@ -528,7 +528,7 @@ $$
 \widehat{\mathcal S}_{N,J}(a)=\widehat u^{(J)}.
 $$
 
-The initial-data term is carried through the blocks. Kernel operations communicate across locations, while \(\mathcal N_\theta\) acts pointwise. The same block can be reused at every iteration. This is the construction behind the paper's neural-operator approximation, rather than a claim that every trained operator architecture performs Picard iteration ([Section 4.1 and Remark 3](https://proceedings.iclr.cc/paper_files/paper/2025/file/d4b6ccf3acd6ccbc1093e093df345ba2-Paper-Conference.pdf)).
+Each block carries the initial-data term, applies a kernel across locations, and evaluates \(\mathcal N_\theta\) pointwise. The construction reuses this block; general trained operators need not perform Picard iteration ([Section 4.1 and Remark 3](https://proceedings.iclr.cc/paper_files/paper/2025/file/d4b6ccf3acd6ccbc1093e093df345ba2-Paper-Conference.pdf)).
 
 {{< figure src="figures/functional-operator-picard.svg" link="figures/functional-operator-picard.svg" width="720" alt="Two parallel constructions map initial data to an entire trajectory. Exact Picard iteration converges to the PDE solution; finite kernel and neural approximations produce an operator network. A bound separates iteration error from block approximation error." caption="**Figure 8.** A solution map built from a repeated functional update. The upper row is exact Picard iteration; the lower row approximates its blocks. The same construction serves a family of initial functions. Original LaTeX/TikZ exposition of the mechanism in [Furuya et al., Section 4.1](https://proceedings.iclr.cc/paper_files/paper/2025/file/d4b6ccf3acd6ccbc1093e093df345ba2-Paper-Conference.pdf)." >}}
 
@@ -540,7 +540,7 @@ e_{k+1}\le q e_k+\eta,
 \boxed{e_J\le q^J e_0+\frac{1-q^J}{1-q}\eta.}
 $$
 
-The first term is unfinished solution iteration. The second is the cost of approximating its blocks, amplified by stability. Greater depth reduces the first term; improving kernels, nonlinearities, or numerical quadrature reduces the second. **Depth alone cannot remove the approximation floor.**
+Depth reduces unfinished iteration, the first term. Improving kernels, nonlinearities, or quadrature reduces the second term, the block-approximation error amplified by stability. **Depth alone cannot remove the approximation floor.**
 
 #### What the FOL approximation theorem guarantees
 
@@ -560,7 +560,24 @@ Operator approximation can use Banach spaces. Its output norm must control the p
 
 #### A contemporary architectural connection
 
-[**Continuum Attention for Neural Operators** (Calvello et al., JMLR 2025)](https://www.jmlr.org/papers/v26/24-0879.html) gives a contemporary architectural connection. Figure 9 shows its operator architecture. The input function is combined with coordinates, lifted to a feature function, processed by attention blocks, and projected to an output function. In the paper's notation the output is \(z(x)\); this denotes a function, while our \(z\) denotes a latent vector.
+**Neural parameters are compatible with functional learning; the architectural advance is defining what each layer does to a function, then making its token computation consistently approximate that operation.** [Continuum Attention for Neural Operators (Calvello et al., 2025)](https://www.jmlr.org/papers/v26/24-0879.html) applies this perspective to attention, independently of the Picard construction above.
+
+With learned query, key, and value matrices \(Q,K,V\), set \(s_v(x,y)=\langle Qv(x),Kv(y)\rangle\). For a feature function \(v\),
+
+$$
+\begin{aligned}
+\mathcal A(v)(x)
+&=\frac{\int_\Omega e^{s_v(x,y)}Vv(y)\,dy}
+{\int_\Omega e^{s_v(x,y)}\,dy},\\
+\mathcal A_h(v)(x_i)
+&=\frac{\sum_j w_j e^{s_v(x_i,x_j)}Vv(x_j)}
+{\sum_j w_j e^{s_v(x_i,x_j)}}.
+\end{aligned}
+$$
+
+The first line defines continuum attention; the second approximates it by quadrature. Equal positive \(w_j\) recover conventional softmax. On uneven meshes, appropriate weights approximate spatial volume; unweighted attention follows sampling density. This is a quadrature interpretation; the paper proves convergence for independent uniform samples ([Definitions 4–5 and Theorem 6](https://www.jmlr.org/papers/volume26/24-0879/24-0879.pdf)).
+
+Figure 9 applies attention blocks to feature functions. Its output \(z(x)\) denotes a function; our \(z\) denotes a latent vector.
 
 {{< figure src="figures/continuum-attention-architecture.png" link="figures/continuum-attention-architecture.png" alt="Transformer neural operator architecture: an input function and coordinates are lifted, processed by repeated attention encoder layers, and projected to an output function." caption="**Figure 9.** An implemented operator architecture with attention acting on feature functions. Source: [Calvello et al., Figure 1](https://www.jmlr.org/papers/v26/24-0879.html), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)." >}}
 
@@ -577,8 +594,6 @@ $$
 Figure 10 shows two coefficient functions and their predicted solutions from the same model. Its columns show inputs, reference solutions, predictions, and logarithmic absolute errors. The rows are the test samples with median and maximum relative \(L^2\) error.
 
 {{< figure src="figures/continuum-attention-darcy.png" link="figures/continuum-attention-darcy.png" alt="Darcy operator-learning examples with input fields, reference solutions, predictions, and log-scale pointwise error for the median and maximum relative-error samples." caption="**Figure 10.** Darcy predictions from the Fourier attention neural operator variant in the continuum-attention paper. These are experiments from a separate 2025 operator-learning source, rather than numerical results of the parabolic approximation theorem. Source: [Calvello et al., Figure 12](https://www.jmlr.org/papers/v26/24-0879.html), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)." >}}
-
-The example uses the paper's Fourier attention variant. It illustrates an implemented solution map; the Picard theorem above concerns a different, semilinear parabolic family ([Sections 4 and 6.2.2](https://www.jmlr.org/papers/volume26/24-0879/24-0879.pdf)).
 
 Random inputs \(a\sim\rho\) induce a solution law \(\mathcal S_\#\rho\). When observations leave several fields possible, we may instead want to learn a conditional law directly. This brings us to functional transport learning.
 
