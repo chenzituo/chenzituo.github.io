@@ -919,23 +919,23 @@ FFM learns a time-dependent operator \(v_\theta(\tau,\cdot):H\to H\), connecting
 
 Training residuals may suggest where more resolution is useful, but Section 3 shows they include conditional variability. A minibatch loss alone cannot certify marginal-velocity accuracy or prescribe refinement.
 
-During generation, \(b_m=\dot z\) is the finite-code velocity. At \(u=D_m(z)\), compute it from \(v_\theta(\tau,u)\) with Section 4's Gram system:
+**The velocity's definition matters.** Section 4 projects a specified field velocity into coordinates. [FunDiff](https://arxiv.org/html/2506.07902v2) predicts a code velocity \(g_{\theta,m}\) directly; for a fixed decoder, the chain rule gives
 
 $$
-\begin{aligned}
-G_m(z)b_m&=D_m'(z)^*v_\theta(\tau,D_m(z)),\\
-G_m(z)&=D_m'(z)^*D_m'(z).
-\end{aligned}
+\dot z=g_{\theta,m}(\tau,z),
+\qquad
+\dot u=D_m'(z)g_{\theta,m}(\tau,z).
 $$
 
-Use a pseudoinverse for redundant coordinates. For an orthonormal Fourier decoder \(u=\sum_{j=1}^m z_je_j\) in \(L^2\), \(b_{m,j}=\langle e_j,v_\theta(\tau,u)\rangle_H\): the predicted velocity's Fourier coefficients. Integrate \(\dot z=b_m\), then estimate
+The decoder derivative converts code motion into field motion; it does not supply a desired velocity. Comparing that motion with itself gives zero. A mismatch indicator needs a separately evaluated reference:
 
 $$
-e_{\mathrm{rep}}(\tau,u;m)
-=\|D_m'(z)b_m-v_\theta(\tau,u)\|_H.
+e_{\mathrm{ref}}(\tau,z;m)
+=\|D_m'(z)g_{\theta,m}(\tau,z)
+-v_{\mathrm{ref}}(\tau,D_m(z))\|_H.
 $$
 
-This proposed realization of FFM requires richer velocity evaluations and consistent quadrature: coarse samples alone cannot reveal missing modes. The defect could guide \(m=m(\tau,u)\) alongside integration-error control; it does not measure \(v_\theta-v^*\).
+A compatible finer flow at the same time and field could supply the reference, accounting for transfer and reference errors. This is a consistency indicator, not a pure representation-error certificate. Enlarging the code requires a compatible velocity model; more decoder queries only refine evaluation.
 
 Transfers must also control field error and newly resolved randomness. Suppose the coarse field stores \(X\), while the intended fine field is
 
