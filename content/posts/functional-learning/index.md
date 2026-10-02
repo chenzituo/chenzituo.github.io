@@ -20,7 +20,7 @@ Suppose we learn temperature fields from simulations. Different simulations stor
 
 Neural PDE models often compress these observations into latent vectors. With a coordinate-query decoder, fixing the code \(z\) defines a whole function \(u_z(x)\). Its meaning comes from the code and decoder together. The important question is what this represented function lets us compute accurately.
 
-**Functional learning makes the field, its physical operations, and its required accuracy part of the learning problem.** We begin with those requirements, explain how arrays and codes describe functions, and then develop three learning tasks: finding a function, learning a map between functions, and generating a law over functions. Mathematical examples from FGD, a 2025 operator-approximation paper, and FFM make these tasks concrete. Their shared ingredients lead to model design, error analysis, PDE applications, and the open questions at the end.
+**Functional learning makes the field, its physical operations, and its required accuracy part of the learning problem.** We begin with those requirements, explain how arrays and codes describe functions, and then develop three learning tasks: finding a function, learning a map between functions, and generating a law over functions. Examples from functional gradient descent (FGD), functional operator learning (FOL), and functional flow matching (FFM) make these tasks concrete. Their shared ingredients lead to model design, error analysis, PDE applications, and the open questions at the end.
 
 ## 1. What do we need from a learned PDE solution?
 
@@ -151,7 +151,7 @@ For the first problem, we need an update that reduces a functional \(\mathcal L(
 
 The PDE requirements lead to three different targets. An objective defines the function we want to find; a family of equations defines the solution map we want to approximate; data and conditioning information define the law we want to generate. The following examples develop the mathematics of each target.
 
-### Functional optimization: finding one solution {#functional-gradient-descent}
+### Functional optimization (FGD): finding one solution {#functional-gradient-descent}
 
 Functional optimization treats the candidate function as the unknown. [Functional Gradient Descent](https://arxiv.org/abs/2606.16926) provides a concrete way to connect its updates to geometry and representation error. We first derive the gradient, then use a PDE energy and the paper's examples to see what changes when the representation adapts.
 
@@ -241,6 +241,8 @@ Figure 2 shows the numerical consequence in the paper's toy reconstruction examp
 
 The paper's algorithm uses a computable error bound for its refinement test. Its analysis also allows approximations in a larger Banach space than the Hilbert space defining the gradient. Under its extension, compatibility, smoothness, and step-size assumptions, the authors bound the minimum squared gradient norm over iterations; a Polyak–Łojasiewicz-type condition gives a geometric objective-gap bound. The full conditions are in [Section 3](https://arxiv.org/abs/2606.16926).
 
+Functional gradients and inexact-gradient methods predate this paper. Its distinctive contribution is the combination of adaptive gradient representations, computable error tests, and convergence guarantees under the stated assumptions. The authors' priority claim concerns an implementable FGD method with these guarantees in a general setting ([Introduction and Sections 3.1–3.2](https://arxiv.org/html/2606.16926v1)). That claim does not establish that every ingredient is new, or that the same guarantees hold for an arbitrary learned representation.
+
 #### Two applications: wave equations and inverse rendering
 
 FGD's second experiment optimizes a space-time function through a wave-equation residual and initial-condition penalties. Its third optimizes density and view-dependent color through a differentiable rendering operator. Both fit the template
@@ -269,7 +271,7 @@ Inverse rendering changes the task operator. The unknown functions describe scen
 
 Both applications specify an objective on functions and then approximate its updates. They seek an optimized function. If the initial conditions or coefficients change, however, the desired function changes too. The next task learns a map that serves an entire family of problems.
 
-### Functional operator learning: predicting across problems {#functional-operator-learning}
+### Functional operator learning (FOL): predicting across problems {#functional-operator-learning}
 
 A per-problem optimization produces one solution. Operator learning produces a rule for obtaining solutions when the problem data change. Let \(\mathcal A\) be an input function space and \(\mathcal U\) an output function space. The object is
 
@@ -288,7 +290,7 @@ $$
 
 Here \(\rho\) describes the input problems we expect to encounter. The same parameters \(\theta\) serve every input. In FGD, the unknown being updated was a function \(u\); here, the unknown being fitted is a map between functions. Training that map can still use ordinary parameter-space gradient descent.
 
-DeepONet and FNO are established examples. For a PDE-based mathematical counterpart to FGD and FFM, we will use **Furuya, Taniguchi, and Okuda's ICLR 2025 paper**. Its construction connects operator layers to a convergent solution procedure. This lets us ask what each layer computes and why errors need not accumulate without control.
+DeepONet and FNO are established examples of **functional operator learning (FOL)**. Here FOL names the learning task, rather than a new acronym assigned by the authors to their method. We use **Furuya, Taniguchi, and Okuda's [Quantitative Approximation for Neural Operators in Nonlinear Parabolic Equations](https://proceedings.iclr.cc/paper_files/paper/2025/hash/d4b6ccf3acd6ccbc1093e093df345ba2-Abstract-Conference.html)** as the mathematical example. Its construction connects operator layers to a convergent solution procedure. This lets us ask what each layer computes and why approximation errors remain controlled.
 
 #### From a PDE to a fixed-point map
 
@@ -363,7 +365,7 @@ $$
 
 The first term is unfinished solution iteration. The second is the cost of approximating its blocks, amplified by stability. Greater depth reduces the first term; improving kernels, nonlinearities, or numerical quadrature reduces the second. **Depth alone cannot remove the approximation floor.** Appendix I derives this bound and distinguishes the continuum construction from its numerical evaluation.
 
-#### What the 2025 theorem guarantees
+#### What the FOL approximation theorem guarantees
 
 Under the paper's semigroup, nonlinearity, and kernel-expansion assumptions, each initial-data radius \(R\) admits a sufficiently short \(T\). For any \(\varepsilon\in(0,1)\), a ReLU neural operator exists with
 
@@ -422,7 +424,7 @@ The example uses the paper's Fourier attention variant, which modifies the atten
 
 Random inputs \(a\sim\rho\) induce a solution law \(\mathcal S_\#\rho\). When observations leave several fields possible, we may instead want to learn a conditional law directly. This brings us to functional transport learning.
 
-### Functional transport learning: generating solution distributions {#functional-flow-matching}
+### Functional transport learning (FFM): generating solution distributions {#functional-flow-matching}
 
 Suppose we have samples of functions: solution fields from a simulator, for example. We want to generate new functions from the same distribution. FFM starts with a reference distribution of random functions and learns a velocity that transports it toward the data distribution.
 
@@ -517,7 +519,7 @@ The population target becomes \(\mathbb E[w_\tau\mid\tau,u_\tau,c]\). Figure 10 
 
 Conditioning the learned velocity and enforcing observations during sampling are different mechanisms. The right column demonstrates the latter's effect; exact agreement at observed points does not by itself establish a correct posterior law ([Section 5 and Appendix A.4](https://proceedings.mlr.press/v238/kerrigan24a/kerrigan24a.pdf)). The paper's FNO implementation also uses uniform grids, so its continuum formulation should be distinguished from that numerical restriction.
 
-| | Functional gradient descent | Operator learning: the 2025 construction | Functional flow matching |
+| | FGD: functional gradient descent | FOL: the Picard construction | FFM: functional flow matching |
 | --- | --- | --- | --- |
 | Object | One function | A map between functions | A law over functions |
 | Goal | Decrease a functional | Approximate a solution map uniformly over inputs | Transport a probability law |
@@ -1049,15 +1051,79 @@ A controlled study can compare a frozen decoder with one trained on both states 
 
 The missing-velocity quantity and transfer examples above suggest a representation that grows with the dynamics. The design question is how to choose refinement times while controlling the accumulated error and preserving the current law.
 
-For descent, we can ask whether an approximate gradient still reduces the loss. For generation, the quantity we ultimately care about is the error in the endpoint law.
+FGD offers two possible connections to FFM. We could use functional optimization to **learn the velocity**, or borrow error-controlled refinement to **compute its transport**. These are different algorithms, with different unknowns and guarantees.
 
-A direct stability calculation separates three contributions: error in the initial functions, accumulated velocity error, and jumps caused by changing representations. The flow's sensitivity amplifies these errors. Section 5 and Appendix D give the corresponding bound under a state-Lipschitz reference velocity and finite-second-moment assumptions.
+#### Using FGD to learn an FFM velocity
 
-This suggests refining where the remaining contribution to endpoint error is large. Velocity-learning error, tangent-projection error, and numerical integration error should be measured separately. A relative velocity tolerance also needs an absolute tolerance near zero velocity. The generative path has no requirement to reduce a scalar objective at every step.
+Hold the probability path fixed. Its population regression objective can be viewed as a functional of the whole velocity map \(v:(\tau,u)\mapsto H\). The appropriate Hilbert space is
 
-As the two-mode example in Section 5 shows, preserving a coarse sample does not supply the conditional randomness of newly represented modes. One possible design keeps a common fine-scale random seed and reveals its modes progressively. Their distribution must be consistent with the current transport marginal, and the coarse dynamics must account for their effects.
+$$
+\mathcal V=L^2(d\tau\,\mu_\tau(du);H),
+\qquad
+\|v\|_{\mathcal V}^2
+=\int_0^1\int_H\|v(\tau,u)\|_H^2\,\mu_\tau(du)\,d\tau.
+$$
 
-A tractable starting experiment would use fixed nested spaces and known field velocities. Compare adaptive refinement with a fixed fine representation at matched endpoint accuracy and total cost, separating projection, transfer, and integration errors. Learned velocities and a moving basis can then be studied once the transfer and marginal-consistency questions are understood.
+For square-integrable targets, Appendix B's conditional-regression identity gives
+
+$$
+\mathcal J(v)-\mathcal J(v^*)=\|v-v^*\|_{\mathcal V}^2,
+\qquad
+\nabla_{\mathcal V}\mathcal J(v)=2(v-v^*).
+$$
+
+The unrestricted population problem is a strongly convex quadratic in this space, identifying velocities up to equality almost everywhere along the training path. A proposed FGD scheme would update the velocity function:
+
+$$
+v_{k+1}=v_k-\alpha g_k,
+\qquad
+\|g_k-\nabla_{\mathcal V}\mathcal J(v_k)\|_{\mathcal V}
+\le\epsilon\|g_k\|_{\mathcal V}.
+$$
+
+Here \(k\) indexes training updates; \(\tau\) remains generative time. Appendix A's descent calculation applies with smoothness constant \(2\). Under a uniform \(\epsilon<1\) and a suitable fixed step, it yields geometric reduction of population excess risk. Section 5 then connects that risk to generated-law error when the learned velocities also satisfy the required stability assumptions.
+
+This is a mathematical opportunity, rather than an implemented FFM method. The population gradient contains the unknown conditional mean \(v^*\). A practical scheme needs a computable bound on gradient approximation and statistical error, an enrichable representation of maps on function-valued inputs, and control of the resulting velocity's regularity. A minibatch loss or agreement between two models does not supply that certificate. The quadratic functional geometry also does not make a nonlinear neural parameterization convex.
+
+#### Using refinement to compute the transport
+
+During sampling, we update a field by \(du_\tau/d\tau=v_\tau(u_\tau)\). This velocity need not decrease a scalar objective. The transferable idea is to make the representation accurate enough for the required update, with an error budget appropriate to the resulting law.
+
+Let \(\widetilde v_m\) be the represented velocity at capacity \(m\). If a computable estimator bounds its defect against the intended reference velocity, one candidate rule is
+
+$$
+U_m(\tau,u)\ge
+\|\widetilde v_m(\tau,u)-v_\tau(u)\|_H,
+\qquad
+U_m(\tau,u)\le
+\epsilon_{\rm rel}\|\widetilde v_m(\tau,u)\|_H
++\epsilon_{\rm abs}.
+$$
+
+The absolute tolerance handles regions of nearly zero velocity. Representation error, learned-velocity error, and integration error must be separated; refining the representation cannot remove the other two.
+
+Local velocity accuracy is only part of the calculation. With a reference Lipschitz envelope \(L\), define the remaining amplification
+
+$$
+A(\tau)=\exp\!\left(\int_\tau^1L(q)\,dq\right).
+$$
+
+Appendix D weights each dynamical defect and each representation-transfer jump by this factor. A useful refinement policy would allocate accuracy according to its contribution to endpoint error. It also needs a consistent law for newly added modes, as the two-mode example in Section 5 showed. Keeping a common fine-scale random seed is one possible design; the coarse dynamics must still account for unresolved modes.
+
+#### Existing connections and a decisive first test
+
+Adaptation and coarse-to-fine generation already appear in related work:
+
+| Work | What it changes or establishes | Connection to the proposed transfer |
+| --- | --- | --- |
+| [Adaptive Flow Matching](https://proceedings.mlr.press/v267/fotiadis25a.html) | Encoded base distributions and validation-error-based noise scaling | Adjusts reference uncertainty during training |
+| [Scale-Adaptive Generative Flows](https://arxiv.org/abs/2509.02971v2) | Source spectra and interpolation schedules | Controls drift regularity and numerical conditioning |
+| [Scale-autoregressive modeling](https://arxiv.org/html/2604.11403v1#S3) | Samples finer field values conditional on coarser scales | Supplies an existing hierarchy of conditional generative models |
+| [FFM discretization consistency](https://arxiv.org/html/2608.04531v1) | Convergence of finite conditional velocity targets, including nonnested reconstruction sequences | Explains why changing observations changes the target being learned |
+
+In a targeted literature review as of October 1, 2026, I found no direct application of Csillag et al.'s adaptive FGD algorithm to FFM. That finding supports exploring a connection; it is not a proof of priority. The specific question is whether **computable update-error control can guide representation refinement while preserving the intended function law**.
+
+Start with Gaussian or finite-prototype laws whose reference velocities are known. Compare a fixed fine representation, a prescribed coarse-to-fine hierarchy, and error-controlled refinement at matched endpoint accuracy. Measure physical Wasserstein error, derivative statistics, mode correlations, and total cost including error estimation, transfers, and model evaluations. Hold the source and interpolation path fixed to isolate representation adaptation. Test both independent and coupled modes before learning the velocity from data. A benefit would be lower cost at the same physical and distributional accuracy; fast samples alone would not establish it.
 
 ### Sources conditioned on physics and observations
 
@@ -1145,7 +1211,19 @@ $$
 r_\tau=\dot{\widetilde u}_\tau-v_\tau(\widetilde u_\tau).
 $$
 
-Couple the initial states and assume finite second moments and integrable defect norms. If \(J_j\) is a field jump introduced at a representation change, Grönwall's inequality bounds the coupled endpoint difference. Using this coupling to bound the Wasserstein distance gives
+Couple the initial states and assume finite second moments and integrable defect norms. At deterministic refinement times \(\tau_j\), let \(J_j\) be the jump in the represented field. Define \(A(\tau)=\exp(\int_\tau^1L(q)dq)\). Applying the integrating-factor form of Grönwall between these times, and then Minkowski to the coupling, gives
+
+$$
+\begin{aligned}
+W_{2,H}(\operatorname{Law}(u_1),\operatorname{Law}(\widetilde u_1))
+\le{}&
+A(0)\|u_0-\widetilde u_0\|_{L^2(\mathbb P;H)}\\
+&+\int_0^1 A(\tau)\|r_\tau\|_{L^2(\mathbb P;H)}\,d\tau\\
+&+\sum_j A(\tau_j)\|J_j\|_{L^2(\mathbb P;H)}.
+\end{aligned}
+$$
+
+Since a Lipschitz envelope is nonnegative, \(A(\tau)\le A(0)\). A simpler uniform-amplification bound is therefore
 
 $$
 \begin{aligned}
@@ -1305,7 +1383,7 @@ Empirical laws converge almost surely in \(W_2\) under the finite-second-moment 
 
 ### I. Operator approximation through a stable fixed point
 
-The ICLR 2025 result concerns a fixed semilinear parabolic PDE and a varying initial function. In our notation, its assumptions include:
+Furuya et al.'s FOL approximation result concerns a fixed semilinear parabolic PDE and a varying initial function. In our notation, its assumptions include:
 
 - A linear solution semigroup with smoothing estimate
   \(\|E(t)\|_{L^{b_1}\to L^{b_2}}\le C_E t^{-\nu(1/b_1-1/b_2)}\)
@@ -1391,6 +1469,7 @@ Uniform approximation also bounds population risk on the admitted family: if \(\
 
 27. Furuya, T., Taniguchi, K., and Okuda, S. [Quantitative Approximation for Neural Operators in Nonlinear Parabolic Equations](https://proceedings.iclr.cc/paper_files/paper/2025/hash/d4b6ccf3acd6ccbc1093e093df345ba2-Abstract-Conference.html). ICLR, 2025; preprint first posted in 2024.
 28. Calvello, E., Kovachki, N. B., Levine, M. E., and Stuart, A. M. [Continuum Attention for Neural Operators](https://www.jmlr.org/papers/v26/24-0879.html). JMLR 26(300):1–52, 2025.
+29. Lino, M., and Thuerey, N. [One Scale at a Time: Scale-Autoregressive Modeling for Fluid Flow Distributions](https://arxiv.org/abs/2604.11403). arXiv:2604.11403, 2026.
 
 ## Cite this note
 
