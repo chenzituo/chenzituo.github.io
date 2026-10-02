@@ -153,7 +153,7 @@ The PDE requirements lead to three different targets. An objective defines the f
 
 ### Functional optimization (FGD): finding one solution {#functional-gradient-descent}
 
-Functional optimization treats the candidate function as the unknown. [Functional Gradient Descent](https://arxiv.org/abs/2606.16926) provides a concrete way to connect its updates to geometry and representation error. We first derive the gradient, then use a PDE energy and the paper's examples to see what changes when the representation adapts.
+Functional optimization treats the candidate function as the unknown. [Functional Gradient Descent](https://arxiv.org/abs/2606.16926) provides a concrete way to connect its updates to geometry and representation error. We first derive the gradient, compare PINN parameter updates with functional updates for the same PDE loss, and then use the paper's examples to see what changes when the representation adapts.
 
 #### From a directional derivative to a gradient
 
@@ -184,11 +184,13 @@ $$
 
 The second identity follows by substituting the first into the chain rule. Along a sufficiently regular trajectory, the loss decreases at a rate equal to the squared gradient norm. Convergence to a global minimum additionally depends on the objective.
 
-What does the choice of inner product change in a PDE solve? We can hold the energy and its minimizer fixed, then compare two updates: subtract the PDE residual at each location, or first convert that residual into a direction using the PDE's energy inner product.
+A neural PDE model also describes a function, but its optimizer usually updates network weights. How does that familiar gradient relate to the functional gradient above? A single PDE loss lets us compare the two directly.
 
-#### The same PDE energy under two geometries
+#### PINN parameter updates versus functional updates {#the-same-pde-energy-under-two-geometries}
 
-Suppose we want to find a scalar field \(u^*\) on a bounded domain \(\Omega\), given a source \(f\). The equation and boundary condition to solve are
+The neural-network representation in the [FGD paper's introduction](https://arxiv.org/html/2606.16926v1#S1) is a familiar starting point: represent the unknown by \(u_\theta\), then optimize the weights \(\theta\). A PINN does this with a loss built from network values and PDE derivatives at training points. We can compare that parameter update with a functional update while keeping the equation and loss the same.
+
+Suppose we want to find a scalar field \(u^*\) on a bounded domain \(\Omega\), given a source \(f\), by solving
 
 $$
 \begin{cases}
@@ -197,67 +199,88 @@ u^*(x)=0, & x\in\partial\Omega.
 \end{cases}
 $$
 
-This is the Poisson problem with homogeneous Dirichlet boundary conditions. For example, it describes a steady temperature field with unit conductivity, heat source \(f\), and zero boundary temperature. We want an update that moves a candidate field \(u\) toward this solution.
-
-A variational way to solve this PDE is to minimize the Dirichlet energy
+This Poisson problem can describe a steady temperature field with unit conductivity and zero boundary temperature. For simplicity, let the representation enforce the boundary condition exactly. At interior collocation points \(x_i\), define the residual and sampled loss
 
 $$
-\mathcal E(u)=\frac12\int_\Omega|\nabla u|^2\,dx
--\int_\Omega fu\,dx,
-\qquad u\in H_0^1(\Omega).
+r_i(u)=-\Delta u(x_i)-f(x_i),
+\qquad
+\mathcal L_N(u)=\frac12\sum_{i=1}^N w_i r_i(u)^2,
+\qquad w_i>0.
 $$
 
-The space \(H_0^1(\Omega)\) encodes the zero boundary condition and square-integrable first derivatives.
+A PINN evaluates \(u_\theta\) and its derivatives by automatic differentiation, assembles \(\mathcal L_N(u_\theta)\), and backpropagates to the weights. Boundary penalties or field-data terms can be included in the same calculation; we omit them here to keep one mechanism visible ([Raissi et al., Section 2.1](https://arxiv.org/abs/1711.10561)).
 
-For \(f\in L^2(\Omega)\) on a suitable domain, differentiating this energy in direction \(h\in H_0^1(\Omega)\) gives
-
-$$
-D\mathcal E(u)[h]
-=\int_\Omega\nabla u\cdot\nabla h\,dx
--\int_\Omega fh\,dx.
-$$
-
-At the minimizer, this derivative is zero for every admissible \(h\). That is exactly the weak form of the Poisson equation above. The energy therefore gives us an optimization objective for finding its solution; now we can compare how two gradient choices reduce that same objective.
-
-Write \(A=-\Delta\) for the weak Dirichlet operator and \(r_k=Au_k-f\) for the current PDE residual. Integration by parts identifies the formal \(L^2\) gradient as this residual. In the energy inner product, the gradient \(g\) instead satisfies
+To define a functional gradient of exactly this sampled loss, choose a Hilbert space \(H\) of fields satisfying the boundary condition, with enough regularity that \(h\mapsto-\Delta h(x_i)\) is bounded. A sufficiently regular Sobolev space or smooth RKHS can provide this; bare \(L^2\) does not. Perturbing the field gives
 
 $$
-\int_\Omega\nabla g\cdot\nabla h\,dx
-=D\mathcal E(u)[h].
+D\mathcal L_N(u)[h]
+=\sum_i w_i r_i(u)\,[-\Delta h(x_i)].
 $$
 
-The last equation says \(Ag=Au-f\), hence \(g=A^{-1}(Au-f)=u-u^*\). This gives a direct comparison:
-
-| For the same energy \(\mathcal E\) | Residual update in \(L^2\) | Energy-metric update in \(H_0^1\) |
-| --- | --- | --- |
-| Inner product | \(\int_\Omega gh\,dx\) | \(\int_\Omega\nabla g\cdot\nabla h\,dx\) |
-| Gradient at \(u_k\) | \(r_k=Au_k-f\) | \(A^{-1}r_k=u_k-u^*\) |
-| Descent step | \(u_{k+1}=u_k-\eta r_k\) | \(u_{k+1}=u_k-\eta A^{-1}r_k\) |
-| How the field changes | Subtract the residual at each location | Solve \(Ag_k=r_k\), then subtract that whole correction field |
-| Work needed for the direction | Evaluate the PDE residual | Apply an inverse elliptic operator to the residual |
-
-**Both columns are functional gradient descent.** Here, “pointwise” describes how the residual is subtracted, not independent optimization at each point: the Laplacian already couples neighboring values. The energy metric adds a global elliptic solve that converts the residual into a correction. The \(L^2\) expression requires \(Au\in L^2\); the energy and its weak gradient are defined on \(H_0^1\). Boundary conditions must also be enforced in a numerical update.
-
-The difference is especially visible for a rapidly oscillating error. On \(\Omega=(0,\pi)\), choose \(f(x)=\sin x\), so \(u^*(x)=\sin x\), and let
+Let \(q_i\in H\) be the Riesz representative of the residual evaluation: \(\langle q_i,h\rangle_H=-\Delta h(x_i)\). The functional gradient is therefore the whole correction field
 
 $$
-u_k(x)=\sin x+\delta\sin(nx),\qquad n\in\mathbb N,\ n\geq2.
+g_N(u):=\nabla_H\mathcal L_N(u)
+=\sum_i w_i r_i(u)q_i.
 $$
 
-The residual is \(r_k(x)=n^2\delta\sin(nx)\), whereas the energy gradient is \(A^{-1}r_k(x)=\delta\sin(nx)\). After one step, the two error amplitudes are
+Now insert a differentiable neural representation \(u_\theta\in H\), with \(\theta\in\mathbb R^p\). Its Jacobian maps a small weight change into a field change:
+
+$$
+J_\theta:\mathbb R^p\to H,
+\qquad
+J_\theta\delta\theta
+=\sum_{j=1}^p\frac{\partial u_\theta}{\partial\theta_j}\delta\theta_j.
+$$
+
+By the chain rule, backpropagation computes
 
 $$
 \begin{aligned}
-\text{Residual update:}\quad
-u_{k+1}-u^*&=(1-\eta n^2)\delta\sin(nx),\\
-\text{Energy-metric update:}\quad
-u_{k+1}-u^*&=(1-\eta)\delta\sin(nx).
+\frac{\partial}{\partial\theta_j}\mathcal L_N(u_\theta)
+&=D\mathcal L_N(u_\theta)
+\left[\frac{\partial u_\theta}{\partial\theta_j}\right]\\
+&=\sum_i w_i r_i(u_\theta)
+\left[-\Delta\frac{\partial u_\theta}{\partial\theta_j}(x_i)\right]
+\\
+&=\left\langle g_N(u_\theta),
+\frac{\partial u_\theta}{\partial\theta_j}\right\rangle_H.
 \end{aligned}
 $$
 
-For the residual update, higher frequencies require a smaller explicit step: this mode contracts only when \(0<\eta<2/n^2\). The energy-metric update contracts every mode by the same factor for \(0<\eta<2\). Its favorable scaling comes at a cost: computing \(A^{-1}r_k\) requires an elliptic solve. In this linear example, an exact energy-gradient step with \(\eta=1\) already solves the original problem; the inverse operator is doing that work.
+Equivalently, with \(J_\theta^*\) the adjoint for the chosen field inner product and Euclidean parameter inner product,
 
-This example separates two design decisions. The inner product determines **which correction field we want**. Once that geometry is chosen, an implementation still needs to **represent and approximate the correction accurately**. Adaptive FGD addresses this second decision.
+$$
+\boxed{\nabla_\theta\mathcal L_N(u_\theta)
+=J_\theta^*\nabla_H\mathcal L_N(u_\theta).}
+$$
+
+This is the connection between the two gradients. To isolate the effect of the representation, compare ordinary Euclidean gradient descent on \(\theta\) with ideal functional descent:
+
+| Same PDE and sampled loss | Neural representation / PINN | Ideal functional descent |
+| --- | --- | --- |
+| Unknown being updated | Weights \(\theta\) in \(u_\theta\) | The field \(u\) |
+| Gradient | \(J_\theta^*g_N\) | \(g_N=\nabla_H\mathcal L_N\) |
+| Descent step | \(\theta^+=\theta-\eta J_\theta^*g_N\) | \(u^+=u-\eta g_N\) |
+| Field motion in gradient flow | \(\dot u=-J_\theta J_\theta^*g_N\) | \(\dot u=-g_N\) |
+| Finite computation | Differentiate through the network | Represent and approximate the correction field |
+
+The extra operator in the PINN column follows by decoding the weight update. In continuous optimization time \(s\),
+
+$$
+\dot\theta=-J_\theta^*g_N,
+\qquad
+\dot u_\theta=J_\theta\dot\theta
+=-J_\theta J_\theta^*g_N.
+$$
+
+For a finite step, this field change holds to first order, with an \(o(\eta)\) remainder for a differentiable nonlinear network. Adam or quasi-Newton optimization further changes the parameter update; the chain-rule relation between the two gradients still holds.
+
+Each weight affects a whole function \(\partial_{\theta_j}u_\theta\). Parameter descent measures the alignment of \(g_N\) with these available directions, then combines them to move the field. It can suppress directions outside their span and rescale directions within it. **\(J_\theta J_\theta^*\) is generally neither the identity nor an orthogonal projector.** The resulting kernel-mediated dynamics are also studied in [PINN neural tangent kernel analysis, Section 3.1](https://arxiv.org/abs/2007.14527); the Jacobian identity itself does not require an infinite-width limit.
+
+Thus a zero parameter gradient \(J_\theta^*g_N=0\) need not imply a zero functional gradient \(g_N=0\). Conversely, this comparison supplies no blanket guarantee that functional descent is cheaper or more accurate: its desired direction must still be computed and represented. Both methods also inherit the information limits of the sampled loss; matching finitely many residual values does not by itself establish an accurate PDE solution everywhere.
+
+The function-space metric and the representation are two distinct choices. Holding the loss fixed, changing \(H\) changes \(g_N\) and its associated adjoint \(J_\theta^*\), while their product remains the same Euclidean parameter gradient whenever the loss and network derivatives are well defined in both spaces. We revisit the metric choice in Section 4. The immediate question for FGD is how to approximate the desired correction field without restricting every update to the tangent directions of one fixed neural representation.
 
 #### Adaptive approximation of the gradient
 
@@ -602,9 +625,84 @@ An operator can predict a solution directly or construct it through iterations s
 
 This is what makes the functional viewpoint useful: the same field can be observed on several meshes, evaluated by a physical operator, optimized, or sampled from a law. Each operation has requirements that can be stated before we settle on its coordinates. A continuous decoder is one ingredient; the rest of the learning problem must respect the function it describes.
 
-### Geometry induced by the representation
+### Function-space and representation geometry {#geometry-induced-by-the-representation}
 
-Let \(u=D(z)\), with differentiable \(D:\mathbb R^m\to H\). A small code change \(\delta z\) produces the first-order field change \(D'(z)\delta z\). The decoder derivative therefore determines both which directions are available and how large they are in the function norm.
+There are two choices to distinguish: the inner product used to define a functional gradient, and the coordinates used to represent its motion. Section 3 compared neural parameter descent with functional descent for a fixed loss. We now examine the metric choice, then the geometry a decoder induces on its coordinates.
+
+#### Choosing the function-space metric
+
+The inner product is a separate design choice. To isolate its effect, return to the same Poisson boundary-value problem:
+
+$$
+\begin{cases}
+-\Delta u^*(x)=f(x), & x\in\Omega,\\
+u^*(x)=0, & x\in\partial\Omega.
+\end{cases}
+$$
+
+For this comparison, use the variational Dirichlet energy. This is a different objective from the sampled PINN residual loss in Section 3; here we hold this energy fixed and change only the function-space metric:
+
+$$
+\mathcal E(u)=\frac12\int_\Omega|\nabla u|^2\,dx
+-\int_\Omega fu\,dx,
+\qquad u\in H_0^1(\Omega).
+$$
+
+The space \(H_0^1(\Omega)\) encodes the zero boundary condition and square-integrable first derivatives.
+
+For \(f\in L^2(\Omega)\) on a suitable domain, differentiating this energy in direction \(h\in H_0^1(\Omega)\) gives
+
+$$
+D\mathcal E(u)[h]
+=\int_\Omega\nabla u\cdot\nabla h\,dx
+-\int_\Omega fh\,dx.
+$$
+
+At the minimizer, this derivative is zero for every admissible \(h\). That is exactly the weak form of the Poisson equation above. The energy therefore gives us an optimization objective for finding its solution; now we can compare how two gradient choices reduce that same objective.
+
+Write \(A=-\Delta\) for the weak Dirichlet operator and \(r_k=Au_k-f\) for the current PDE residual. Integration by parts identifies the formal \(L^2\) gradient as this residual. In the energy inner product, the gradient \(g\) instead satisfies
+
+$$
+\int_\Omega\nabla g\cdot\nabla h\,dx
+=D\mathcal E(u)[h].
+$$
+
+The last equation says \(Ag=Au-f\), hence \(g=A^{-1}(Au-f)=u-u^*\). This gives a direct comparison:
+
+| For the same energy \(\mathcal E\) | Residual update in \(L^2\) | Energy-metric update in \(H_0^1\) |
+| --- | --- | --- |
+| Inner product | \(\int_\Omega gh\,dx\) | \(\int_\Omega\nabla g\cdot\nabla h\,dx\) |
+| Gradient at \(u_k\) | \(r_k=Au_k-f\) | \(A^{-1}r_k=u_k-u^*\) |
+| Descent step | \(u_{k+1}=u_k-\eta r_k\) | \(u_{k+1}=u_k-\eta A^{-1}r_k\) |
+| How the field changes | Subtract the residual at each location | Solve \(Ag_k=r_k\), then subtract that whole correction field |
+| Work needed for the direction | Evaluate the PDE residual | Apply an inverse elliptic operator to the residual |
+
+**Both columns are functional gradient descent.** The residual update already couples neighboring values through the Laplacian. The energy metric adds a global elliptic solve that converts the residual into a correction. The \(L^2\) expression requires \(Au\in L^2\); the energy and its weak gradient are defined on \(H_0^1\). Boundary conditions must also be enforced in a numerical update.
+
+The difference is especially visible for a rapidly oscillating error. On \(\Omega=(0,\pi)\), choose \(f(x)=\sin x\), so \(u^*(x)=\sin x\), and let
+
+$$
+u_k(x)=\sin x+\delta\sin(nx),\qquad n\in\mathbb N,\ n\geq2.
+$$
+
+The residual is \(r_k(x)=n^2\delta\sin(nx)\), whereas the energy gradient is \(A^{-1}r_k(x)=\delta\sin(nx)\). After one step, the two error amplitudes are
+
+$$
+\begin{aligned}
+\text{Residual update:}\quad
+u_{k+1}-u^*&=(1-\eta n^2)\delta\sin(nx),\\
+\text{Energy-metric update:}\quad
+u_{k+1}-u^*&=(1-\eta)\delta\sin(nx).
+\end{aligned}
+$$
+
+For the residual update, higher frequencies require a smaller explicit step: this mode contracts only when \(0<\eta<2/n^2\). The energy-metric update contracts every mode by the same factor for \(0<\eta<2\). Its favorable scaling comes at a cost: computing \(A^{-1}r_k\) requires an elliptic solve. In this linear example, an exact energy-gradient step with \(\eta=1\) already solves the original problem; the inverse operator is doing that work.
+
+The inner product determines **which correction field counts as the gradient**. This is a separate choice from optimizing network weights or taking functional updates. Once the function-space metric is chosen, a representation introduces another geometry, through its available directions and their scaling.
+
+#### Geometry induced by the decoder
+
+The PINN Jacobian calculation extends to any differentiable decoder. Let \(u=D(z)\), with differentiable \(D:\mathbb R^m\to H\). A small code change \(\delta z\) produces the first-order field change \(D'(z)\delta z\). The decoder derivative therefore determines both which directions are available and how large they are in the function norm.
 
 For Euclidean gradient descent on the code, applying the chain rule twice gives
 
@@ -1518,6 +1616,7 @@ Uniform approximation also bounds population risk on the admitted family: if \(\
 27. Furuya, T., Taniguchi, K., and Okuda, S. [Quantitative Approximation for Neural Operators in Nonlinear Parabolic Equations](https://proceedings.iclr.cc/paper_files/paper/2025/hash/d4b6ccf3acd6ccbc1093e093df345ba2-Abstract-Conference.html). ICLR, 2025; preprint first posted in 2024.
 28. Calvello, E., Kovachki, N. B., Levine, M. E., and Stuart, A. M. [Continuum Attention for Neural Operators](https://www.jmlr.org/papers/v26/24-0879.html). JMLR 26(300):1–52, 2025.
 29. Lino, M., and Thuerey, N. [One Scale at a Time: Scale-Autoregressive Modeling for Fluid Flow Distributions](https://arxiv.org/abs/2604.11403). arXiv:2604.11403, 2026.
+30. Wang, S., Yu, X., and Perdikaris, P. [When and why PINNs fail to train: A neural tangent kernel perspective](https://arxiv.org/abs/2007.14527). arXiv:2007.14527, 2020.
 
 ## Cite this note
 
