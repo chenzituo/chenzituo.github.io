@@ -13,7 +13,7 @@ pdftoppm -scale-to 1600 -png -singlefile /tmp/functional-learning-diagram/functi
 
 Inspect the rendered PNG after changes and verify the SVG in the blog preview. The PDF, auxiliary files, log, and PNG are build intermediates outside the repository. Paper figures remain separate, unchanged extracts with source attribution.
 
-[functional-theory-error-chain.tex](functional-theory-error-chain.tex) is the source for Figure 17. It traces representation, prototype, smoothing, velocity-learning, and numerical errors in one physical Wasserstein metric. It illustrates the derived bound; it is not a measured result.
+[functional-theory-error-chain.tex](functional-theory-error-chain.tex) is the source for Figure 17 in the [previous long version](https://github.com/chenzituo/chenzituo.github.io/blob/c874949743fd709c45dede636673df473eec6179/content/posts/functional-learning/index.md). A local copy is preserved at materials/archive/functional-learning-long-version.md. The shorter public post omits this extended derivation. The diagram traces representation, prototype, smoothing, velocity-learning, and numerical errors in one physical Wasserstein metric. It illustrates the derived bound; it is not a measured result.
 
 From the blog repository root:
 
