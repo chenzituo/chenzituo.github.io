@@ -865,7 +865,23 @@ For coupled random initial states, an RMS version gives a corresponding Wasserst
 
 ## 6. Outlook
 
-The established examples show what the functional formulation lets us specify and compute. Three questions follow from its engineering and accuracy requirements.
+The established examples show what the functional formulation lets us specify and compute. Four questions follow from its engineering and accuracy requirements.
+
+### Diagnosing blocked functional descent
+
+**Can parameter optimization stall while a useful functional correction remains?** A PINN can already lie in \(H\); \(J_\theta J_\theta^*\) can help or hinder descent. [PINN neural tangent kernel analysis](https://arxiv.org/abs/2007.14527) studies related training-rate imbalances.
+
+Fix the loss and \(H\). With \(g=\nabla_H\mathcal L(u_\theta)\ne0\) and \(\Pi_\theta\) projecting onto \(\operatorname{range}J_\theta\), record
+
+$$
+\rho_\theta=\frac{\|(I-\Pi_\theta)g\|_H}{\|g\|_H},
+\qquad
+\frac{d\mathcal L}{ds}=-\|J_\theta^*g\|^2.
+$$
+
+Using Section 4's Gram projection, \(\rho_\theta\) measures the unavailable correction. When it is small, inspect the nonzero Gram eigenvalues and corresponding field modes for poorly scaled directions. Loss curvature and the optimizer also matter.
+
+A proposed Poisson test would compare Euclidean descent, Gram-corrected descent with the same network, and adaptive functional descent at matched solution accuracy, recording diagnostics and total cost. Does metric correction suffice, or must the representation gain directions? Accurate FGD realization remains necessary; a speedup is not guaranteed.
 
 ### Learned corrections with solver guarantees
 
@@ -879,7 +895,7 @@ $$
 
 This is a proposed solver design. Its update might approximate a functional gradient, a preconditioned residual correction, or another justified numerical step. A gradient approximation can inherit a descent guarantee only when the geometry, error tolerance, and step conditions needed by that guarantee hold. Small PDE residuals also need a problem-specific stability estimate before they imply small solution errors.
 
-Does learning the update transfer better across problems and mesh samplings than learning only endpoints? A controlled study can compare a frozen decoder with one trained on both states and update directions. Measure physical quantities, residuals, and total cost, including correction steps, at matched solution accuracy.
+Does learning updates transfer better across problems and meshes than learning only endpoints? Compare endpoint training with training on states and update directions, including correction cost at matched solution accuracy.
 
 
 ### Adaptive representations that preserve evolving laws
