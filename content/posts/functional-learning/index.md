@@ -915,11 +915,20 @@ Does learning updates transfer better across problems and meshes than learning o
 
 ### Adaptive representations that preserve evolving laws
 
-FGD offers two possible connections to FFM. We could use functional optimization to **learn the velocity**, or borrow error-controlled refinement to **compute its transport**. These are different algorithms, with different unknowns and guarantees.
+FFM learns a time-dependent operator \(v_\theta(\tau,\cdot):H\to H\), connecting velocity learning to FOL. **Could its representation adapt to both \(\tau\) and the current field?**
 
-For learning, the population FFM objective is quadratic in the whole velocity function, but its gradient contains the unknown conditional mean \(v^*\). An adaptive FGD method would need a computable gradient-error bound and control of the learned velocity's regularity. A minibatch loss alone supplies neither.
+Training residuals may suggest where more resolution is useful, but Section 3 shows they include conditional variability. A minibatch loss alone cannot certify marginal-velocity accuracy or prescribe refinement.
 
-For sampling, the velocity need not decrease a scalar objective. Refinement must instead control the velocity defect and transfer error in the stability estimate above. It also needs a consistent law for new coordinates. If a coarse field stores \(X\), and the intended fine field is
+During generation, \(v_\theta\) is available. For \(u=D_m(z)\), use Section 4's projected coordinate velocity \(b_m\) and estimate
+
+$$
+e_{\mathrm{rep}}(\tau,u;m)
+=\|D_m'(z)b_m-v_\theta(\tau,u)\|_H.
+$$
+
+This defect measures unavailable velocity directions. Checking it requires additional queries or quadrature and consistent velocity evaluations across resolutions. Together with integration-error control, it could guide \(m=m(\tau,u)\). It measures computation error for the learned flow; \(v_\theta-v^*\) remains separate.
+
+Transfers must also control field error and newly resolved randomness. Suppose the coarse field stores \(X\), while the intended fine field is
 
 $$
 U=Xe_1+Ye_2,\qquad
@@ -927,11 +936,11 @@ Y=\rho X+\sigma\epsilon,\quad
 \epsilon\sim\mathcal N(0,1)
 $$
 
-with independent \(X,\epsilon\), copying into \((X,0)\) preserves the coarse field but misses fine-scale variability. Adding independent noise misses the correlation. The new coefficient must follow the appropriate conditional law at the refinement time.
+with independent \(X,\epsilon\). Copying into \((X,0)\) misses fine-scale variability; adding independent noise misses the correlation. New coefficients need the conditional law at refinement time.
 
-Source and schedule adaptation already appear in [Adaptive Flow Matching](https://proceedings.mlr.press/v267/fotiadis25a.html) and [Scale-Adaptive Generative Flows](https://arxiv.org/abs/2509.02971v2). Representation refinement adds a different requirement: preserve the represented field and its intended law.
+[Adaptive Flow Matching](https://proceedings.mlr.press/v267/fotiadis25a.html) and [Scale-Adaptive Generative Flows](https://arxiv.org/abs/2509.02971v2) adapt sources or schedules. Refining coordinates additionally requires preserving the field and its intended law.
 
-A first test can use Gaussian laws with known velocities. Compare a fixed fine representation, a prescribed coarse-to-fine hierarchy, and error-controlled refinement at matched endpoint accuracy. Measure derivative statistics, mode correlations, and total cost, including transfers and error estimation.
+Test Gaussian laws with known velocities: compare fixed fine, time-only, and state-dependent representations at matched endpoint accuracy. Measure derivative statistics, mode correlations, and total cost, including transfers and error estimation.
 
 
 ### Sources conditioned on physics and observations
