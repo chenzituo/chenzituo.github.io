@@ -919,14 +919,23 @@ FFM learns a time-dependent operator \(v_\theta(\tau,\cdot):H\to H\), connecting
 
 Training residuals may suggest where more resolution is useful, but Section 3 shows they include conditional variability. A minibatch loss alone cannot certify marginal-velocity accuracy or prescribe refinement.
 
-During generation, \(v_\theta\) is available. For \(u=D_m(z)\), use Section 4's projected coordinate velocity \(b_m\) and estimate
+During generation, \(b_m=\dot z\) is the finite-code velocity. At \(u=D_m(z)\), compute it from \(v_\theta(\tau,u)\) with Section 4's Gram system:
+
+$$
+\begin{aligned}
+G_m(z)b_m&=D_m'(z)^*v_\theta(\tau,D_m(z)),\\
+G_m(z)&=D_m'(z)^*D_m'(z).
+\end{aligned}
+$$
+
+Use a pseudoinverse for redundant coordinates. For an orthonormal Fourier decoder \(u=\sum_{j=1}^m z_je_j\) in \(L^2\), \(b_{m,j}=\langle e_j,v_\theta(\tau,u)\rangle_H\): the predicted velocity's Fourier coefficients. Integrate \(\dot z=b_m\), then estimate
 
 $$
 e_{\mathrm{rep}}(\tau,u;m)
 =\|D_m'(z)b_m-v_\theta(\tau,u)\|_H.
 $$
 
-This defect measures unavailable velocity directions. Checking it requires additional queries or quadrature and consistent velocity evaluations across resolutions. Together with integration-error control, it could guide \(m=m(\tau,u)\). It measures computation error for the learned flow; \(v_\theta-v^*\) remains separate.
+This proposed realization of FFM requires richer velocity evaluations and consistent quadrature: coarse samples alone cannot reveal missing modes. The defect could guide \(m=m(\tau,u)\) alongside integration-error control; it does not measure \(v_\theta-v^*\).
 
 Transfers must also control field error and newly resolved randomness. Suppose the coarse field stores \(X\), while the intended fine field is
 
