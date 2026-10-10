@@ -1,0 +1,81 @@
+{
+  "domain": [
+    0,
+    1
+  ],
+  "basis": [
+    "sin(2 pi x)",
+    "sin(6 pi x)"
+  ],
+  "kernel": "phi_1(x) phi_1(q) + rho phi_3(x) phi_3(q)",
+  "observations": {
+    "one_sensor": [
+      0.25
+    ],
+    "values": [
+      1.0
+    ],
+    "two_sensors": [
+      0.25,
+      0.08333333333333333
+    ],
+    "values_two": [
+      1.0,
+      0.5
+    ]
+  },
+  "reference_coefficients": [
+    1.0,
+    0.0
+  ],
+  "results": {
+    "0.1": {
+      "lift_coefficients": [
+        0.9090909090909091,
+        -0.09090909090909091
+      ],
+      "kernel_coefficients": [
+        0.9090909090909091
+      ],
+      "observation_gram": [
+        [
+          1.1
+        ]
+      ],
+      "rkhs_norm_squared": 0.909090909090909,
+      "native_observation_max_error": 0.0,
+      "L2_error_to_declared_reference": 0.09090909090909093,
+      "derivative_L2_error_to_declared_reference": 1.277239042007405,
+      "two_sensor_coefficients": [
+        1.0,
+        2.7755575615628914e-17
+      ],
+      "two_sensor_gram_condition_number": 7.205664743246541
+    },
+    "1.0": {
+      "lift_coefficients": [
+        0.5,
+        -0.5
+      ],
+      "kernel_coefficients": [
+        0.5
+      ],
+      "observation_gram": [
+        [
+          2.0
+        ]
+      ],
+      "rkhs_norm_squared": 0.5,
+      "native_observation_max_error": 0.0,
+      "L2_error_to_declared_reference": 0.5,
+      "derivative_L2_error_to_declared_reference": 7.024814731040726,
+      "two_sensor_coefficients": [
+        0.9999999999999999,
+        0.0
+      ],
+      "two_sensor_gram_condition_number": 2.25
+    }
+  },
+  "checks": "closed-form coefficients, exact re-observation, norm identity, null-space orthogonality, Pythagoras, update linearity, two-sensor recovery",
+  "scope": "Exact finite-dimensional RKHS with direct point observations. No neural training, source sampling, or performance claim."
+}

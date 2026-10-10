@@ -1,0 +1,59 @@
+{
+  "seed": 20261010,
+  "target": "96 equally weighted isotropic Gaussian components on a stretched 2D spiral",
+  "component_std": 0.12,
+  "sample_count_for_energy": 4096,
+  "angle_quadrature_points": 129,
+  "target_covariance": [
+    [
+      4.115000880906029,
+      0.08679390127912916
+    ],
+    [
+      0.08679390127912916,
+      0.40352230480592344
+    ]
+  ],
+  "isotropic_source_covariance": [
+    [
+      2.2592615928559763,
+      0.0
+    ],
+    [
+      0.0,
+      2.2592615928559763
+    ]
+  ],
+  "source_total_variance_matched": true,
+  "velocity": "analytic conditional expectation",
+  "metric": "Euclidean in fixed physical coordinates; integrated over angle 0 to pi/2",
+  "results": {
+    "Gaussian": {
+      "Isotropic": {
+        "integrated_squared_angular_drift": 0.8061594826276378,
+        "mc_standard_error": 0.012667086490676618,
+        "quadrature_65_vs_129_absolute_difference": 1.926294679321927e-10
+      },
+      "Covariance matched": {
+        "integrated_squared_angular_drift": 0.0,
+        "mc_standard_error": 0.0,
+        "quadrature_65_vs_129_absolute_difference": 0.0
+      }
+    },
+    "Spiral mixture": {
+      "Isotropic": {
+        "integrated_squared_angular_drift": 1.1160214774427837,
+        "mc_standard_error": 0.017031055920606268,
+        "quadrature_65_vs_129_absolute_difference": 9.98145626418534e-06
+      },
+      "Covariance matched": {
+        "integrated_squared_angular_drift": 0.4377540382139722,
+        "mc_standard_error": 0.012982006606625433,
+        "quadrature_65_vs_129_absolute_difference": 2.861351192762207e-06
+      }
+    }
+  },
+  "rk4_120_vs_240_endpoint_rms": 2.697912281983571e-07,
+  "continuity_equation_max_absolute_residual": 2.65800039755959e-07,
+  "scope": "Oracle covariance and velocity; no learned model, no RKHS lift, no forecast benchmark; energy is not runtime or an optimal-transport certificate."
+}

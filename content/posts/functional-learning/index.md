@@ -880,9 +880,140 @@ The defect can include velocity approximation and numerical integration errors. 
 For coupled random initial states, an RMS version gives a corresponding Wasserstein bound when the terms are square-integrable. This is why low training loss, accurate reconstruction, and accurate numerical transport are separate requirements. A useful adaptive rule must control their accumulated effect in the physical norm.
 
 
-## 6. Outlook
+## 6. RKHS Flow: from observed velocities to field updates {#what-makes-an-rkhs-flow-functional}
 
-Two directions follow from treating PDE solutions as functions: improve corrections to individual solutions, and generate their uncertainty more faithfully. The first two topics concern solvers; the last two concern distributions. Here \(H\) is a Hilbert space of fields whose norm measures relevant physical errors.
+A model may predict changes at a finite set of sensors while its intended output is a changing physical field. An RKHS gives us a concrete way to connect the two: **choose a field geometry, lift the predicted readings into a function, and measure velocity errors in that same geometry.** Our [October 7 implementation notes](materials/rkhs_dfot_architecture_20261007/architecture_and_smoke.pdf) instantiate this construction for DynaBench. Two small examples below separate its field-extension rule from its choice of generative source. The [appendix](#rkhs-flow-proofs) supplies the derivations.
+
+### What the network predicts
+
+The model evolves 900 observation values per field. Forecasting conditions on eight history frames and generates the next one. The grid backbone is a temporal CNN; the cloud backbone is a point transformer. Both receive raw and whitened observations and per-frame noise levels, and predict a whitened velocity \(w_\theta\).
+
+Let \(H\) be the chosen RKHS, \(\mathcal O_X:H\to\mathbb R^N\) the bounded observation operator, and \(G=\mathcal O_X\mathcal O_X^*\) its positive-definite Gram matrix. For one frame and channel, the prediction and its field interpretation are
+
+$$
+\boxed{
+ v_\theta=G^{1/2}w_\theta,
+ \qquad \widetilde v_\theta=\mathcal S_Xv_\theta,
+ \qquad \mathcal S_X=\mathcal O_X^*G^{-1}.
+}
+$$
+
+The network outputs observation-space velocities after coloring by \(G^{1/2}\). The fixed lift \(\mathcal S_X\) gives them a spatial meaning; the sampler need not materialize a dense field at every step. With representers \(r_i=\mathcal O_X^*e_i\), where \(e_i\) is a standard basis vector, the lifted velocity is \(\widetilde v_\theta(q)=\sum_i c_i r_i(q)\), with \(c=G^{-1}v_\theta\). These kernel coefficients follow from a linear solve and vary with the network's current state and conditioning.
+
+For direct point observations, \(r_i(q)=K(x_i,q)\). DynaBench's released readings instead use a local thin-plate RBF observation rule applied to an underlying finite Fourier field. We compose that rule with a Fourier covariance to form \(G\). The RBF readout and the RKHS covariance kernel therefore play different roles. An arbitrary RKHS function need not have an exact expansion over these \(N\) representers; our finite expansion comes from selecting the observation span.
+
+### What the lift makes optimal
+
+The lift reproduces the readings and chooses their minimum-norm extension:
+
+$$
+\mathcal O_X\mathcal S_Xv=v,
+\qquad
+\mathcal S_Xv=\underset{f:\,\mathcal O_Xf=v}{\arg\min}\;\|f\|_H^2.
+$$
+
+This is a precise optimality statement. Among fields consistent with the same observation velocity, it selects the smallest correction in the chosen geometry. Components invisible to the observations are set to zero in that extension. Whether they vanish in the true field is a separate question. [Appendix A.1](#rkhs-lift-proof) proves the result and its induced-norm identity.
+
+We can see the choice directly in a two-mode example. On \([0,1]\), write \(\phi_1(x)=\sin(2\pi x)\), \(\phi_3(x)=\sin(6\pi x)\), and \(v=a\phi_1+b\phi_3\). Choose
+
+$$
+K_\rho(x,q)=\phi_1(x)\phi_1(q)+\rho\phi_3(x)\phi_3(q),
+\qquad \|v\|_{H_\rho}^2=a^2+\frac{b^2}{\rho},\quad \rho>0.
+$$
+
+A sensor reports \(v(1/4)=1\), so all we know is \(a-b=1\). The minimum-norm solution is
+
+$$
+\boxed{\widetilde v_\rho(x)=\frac{\phi_1(x)-\rho\phi_3(x)}{1+\rho}.}
+$$
+
+For \(\rho=0.1\), the coefficients are approximately \((0.909,-0.091)\); for \(\rho=1\), they are \((0.5,-0.5)\). Both fit the sensor perfectly. The smaller \(\rho\) makes the high-frequency mode more expensive and assigns less of the reading to it. Starting from \(f=0.3\phi_1\), the update \(f^+=f+0.5\widetilde v_\rho\) changes the sensor value from \(0.3\) to \(0.8\) under either kernel, while moving the rest of the field differently.
+
+{{< figure src="figures/rkhs-lift-two-mode-toy.png" link="figures/rkhs-lift-two-mode-toy.png" alt="Four panels show two kernels lifting the same observed velocity into different functions, the resulting field updates, an unobserved function direction, and recovery of both coefficients after adding a second sensor." caption="**Figure 16.** An exact two-mode RKHS lift. A: both kernels fit the black observation but extend it differently. B: those velocities update an entire field. C: adding a function that vanishes at the sensor preserves its reading. D: a second independent observation determines both coefficients in this particular two-mode space. The dashed reference in A is chosen for illustration and is not available to the one-sensor lift. Original computation; [script](materials/toy-rkhs-lift/run.py) and [checks](materials/toy-rkhs-lift/results.json)." >}}
+
+The function \(h=\phi_1+\phi_3\) vanishes at the sensor. Adding any multiple of it preserves the reading; the lift chooses the smallest-norm member of this family. If the reference velocity is \(\phi_1\), a second reading \(v(1/12)=1/2\) identifies both coefficients, and either kernel recovers the reference. This is exact because the example assumes only two modes and now has two independent measurements. [Appendix A.2](#rkhs-spectral-proof) works through the calculation. The toy explains the lift without any neural training or source sampling.
+
+### How spectral weights enter the implementation
+
+Our finite Fourier prior assigns mode variances
+
+$$
+c_k\propto\left(1+\frac{k_x^2+k_y^2}{16}\right)^{-3},
+\qquad C=\operatorname{diag}(c_k),\qquad G=ACA^T,
+$$
+
+where \(A\) observes the unscaled Fourier basis. All 4,096 basis coefficients have positive variance. Higher frequencies receive smaller weights. Their effects depend on where those weights enter:
+
+| Operation | Effect of the spectral geometry |
+| --- | --- |
+| Source \(Z\sim\mathcal N(0,G)\) | Allocates less underlying Fourier variance to high frequencies. |
+| Field lift | Chooses coefficients minimizing \(\sum_k b_k^2/c_k\) subject to the predicted readings. |
+| Velocity loss | Penalizes errors along low-variance observation directions more strongly. |
+
+The lift discourages **unsupported high-frequency content**. The loss asks for **accurate low-variance components when they are present in the target**. In particular, the implemented error penalty is
+
+$$
+\|\mathcal S_X(v_\theta-V)\|_H^2
+=(v_\theta-V)^TG^{-1}(v_\theta-V)
+=\|w_\theta-G^{-1/2}V\|_2^2.
+$$
+
+It penalizes the residual, rather than the prediction's amplitude. Removing a small-scale feature that belongs in the target can therefore be costly. On the actual observation geometry, the weighted directions are eigenvectors of \(G\), which need not be individual Fourier modes. Whitening and coloring express this same objective in matched coordinates; they are not an additional independent regularizer or a hard frequency cutoff.
+
+For a fixed path and geometry, the unrestricted regression optimum is still
+
+$$
+v^*(U)=\mathbb E[V\mid U],
+$$
+
+with noise level and conditioning held fixed. Ordinary squared error has the same optimum. The RKHS metric changes how a finite model prioritizes approximation error. Changing the source covariance changes the path itself. [Appendix A.3](#rkhs-regression-proof) separates those two effects and the irreducible variability in the training targets.
+
+### When a suitable source simplifies transport
+
+The current `pred_v` target comes from a cosine corruption path,
+
+$$
+U=aY+sZ,\qquad V=aZ-sY,
+\qquad a=\cos\vartheta,\quad s=\sin\vartheta.
+$$
+
+Here \(Y\) is the clean target and \(Z\) the independent Gaussian source. The target \(V\) is the derivative with respect to noise angle \(\vartheta\). Generation proceeds toward decreasing angles through the implemented DDIM schedule; a continuous generative-time drift includes the factor \(d\vartheta/d\tau\).
+
+For a centered Gaussian mode with target variance \(\lambda\) and source variance \(g\), [Gaussian conditioning](https://gaussianprocess.org/gpml/chapters/RW2.pdf) gives
+
+$$
+\boxed{v^*(u,\vartheta)
+=\frac{as(g-\lambda)}{a^2\lambda+s^2g}\,u.}
+$$
+
+When \(g=\lambda\), the marginal velocity is zero: every intermediate distribution already equals the target. Individual paired paths still move, but their velocity targets cancel in the conditional mean. Matching variances can therefore remove part of the transport's work. [Appendix A.4](#rkhs-gaussian-proof) derives the formula. Our fixed PDE smoothness prior is a modeling choice; it has not been established to match each history-conditioned target covariance.
+
+A stretched two-dimensional spiral makes the remaining work visible. We place 96 small Gaussian components along a curve, obtaining a known target covariance \(\Sigma\) and an analytic conditional velocity. Compare sources \(\mathcal N(0,\Sigma)\) and \(\mathcal N(0,\tfrac12\operatorname{tr}(\Sigma)I)\), with equal total variance and the same cosine schedule. The matched source already has the target's elongated spread. The flow still has to form the spiral's curved structure.
+
+{{< figure src="figures/rkhs-flow-spiral-toy.png" link="figures/rkhs-flow-spiral-toy.png" alt="Two rows compare isotropic and covariance-matched Gaussian sources as they flow into a stretched spiral. Columns show source samples, the halfway state, generated endpoints, and independent target samples." caption="**Figure 17.** A two-dimensional illustration of source geometry. Each row follows 700 samples through the analytic mixture velocity using 120 RK4 steps. Axes and total source variance are matched. This is a finite-dimensional transport toy, with known target covariance and no neural training; it does not evaluate the DynaBench RKHS lift. Original computation; [reproduction script](materials/toy-rkhs-flow/run.py) and [results](materials/toy-rkhs-flow/results.json)." >}}
+
+This toy isolates source design; it contains no spatial field lift. To measure its effect in common coordinates, integrate the squared marginal drift along the prescribed probability path:
+
+$$
+\mathcal A(G)=\int_0^{\pi/2}
+\mathbb E_{U\sim p_\vartheta}\|v^*(U,\vartheta)\|_2^2\,d\vartheta.
+$$
+
+For the spiral, the estimates are \(1.116\) for the isotropic source and \(0.438\) for the matched source. For a Gaussian target with the same covariance, they are \(0.806\) and exactly zero. Both comparisons use the same Euclidean norm and angle interval. Averaging squared paired training targets would measure a different quantity. [Appendix A.5](#rkhs-toy-protocol) gives the mixture velocity and numerical protocol.
+
+{{< figure src="figures/rkhs-flow-toy-drift.png" link="figures/rkhs-flow-toy-drift.png" alt="Integrated squared angular drift for Gaussian and spiral targets. Covariance matching gives zero for the Gaussian target and reduces the estimate from 1.116 to 0.438 for the spiral target." caption="**Figure 18.** Covariance matching reduces this measure of motion in the constructed examples. Estimates use 4,096 independent source-target pairs and 129 angle values; error bars are plus or minus 1.96 Monte Carlo standard errors. Increasing quadrature from 65 to 129 angles changes each estimate by less than 0.00001. The quantity is schedule-dependent and does not measure training time, solver cost, or optimality over all transport paths. Original computation." >}}
+
+### What is functional, and what remains to test?
+
+At fixed geometry, linearity gives \(\Delta f=\mathcal S_X\Delta u\). Thus observation updates define coherent field updates and an explicit field-error norm. Arbitrary query locations evaluate that same field; they do not add representational directions or observations. The two-mode toy demonstrates this construction and its unobserved directions. The spiral demonstrates a possible benefit of source covariance selection.
+
+These updates implement generative transport. They have not been identified with the negative functional gradient of a field objective. [Adaptive FGD](https://arxiv.org/html/2606.16926v1#S3) additionally requires a gradient relationship and control of approximation error under its stated assumptions. Our model uses AdamW to train network weights and a fixed representation during sampling, so those descent guarantees do not transfer automatically.
+
+The next empirical question is whether this geometry improves learned transport at matched capacity and compute. Lower squared drift alone does not establish lower velocity sensitivity, faster training, or better forecasts. An imperfect-covariance comparison and new-observation field errors would begin to test those links. Expanding the representation raises a further question: how should newly available directions evolve and acquire uncertainty?
+
+## 7. Outlook {#6-outlook}
+
+Two directions follow from treating PDE solutions as functions: improve corrections to individual solutions, and generate their uncertainty more faithfully. The first two topics concern solvers; the last two extend the representation and source questions developed in the RKHS Flow example. Here \(H\) is a Hilbert space of fields whose norm measures relevant physical errors.
 
 ### Diagnosing stalled training {#diagnosing-blocked-functional-descent}
 
@@ -964,6 +1095,129 @@ Here \(v_\tau\) is the generative velocity, \(\mathcal L_{\mathrm{phys}}\) measu
 A linear-Gaussian inverse problem with a known posterior provides a first test. Compare sources and velocities using physical residuals, posterior moments, uncertainty calibration, and sampling cost.
 
 A functional formulation specifies which updates, errors, and laws should agree across discretizations. Its value for PDE learning becomes concrete when that agreement improves physical predictions and yields a reliable solver or a trustworthy ensemble at an affordable cost.
+
+## Appendix A. RKHS Flow derivations {#rkhs-flow-proofs}
+
+These arguments establish the lift and regression properties used in Section 6. They concern a fixed observation geometry and exact algebra. They do not assume that a trained network attains the population regression optimum. The implementation and toys use finite-dimensional field spaces; no infinite-rank Gaussian with identity covariance on an RKHS is needed.
+
+### A.1. Minimum-norm lift and induced metric {#rkhs-lift-proof}
+
+Let \(H\) be a real RKHS and \(\mathcal O:H\to\mathbb R^N\) a bounded linear observation map. Assume \(G=\mathcal O\mathcal O^*\succ0\), and define \(\mathcal S=\mathcal O^*G^{-1}\). Then \(\mathcal O\mathcal S=I\). Moreover, for any observation vector \(v\),
+
+$$
+\begin{aligned}
+\|\mathcal Sv\|_H^2
+&=\langle\mathcal O^*G^{-1}v,\mathcal O^*G^{-1}v\rangle_H\\
+&=(G^{-1}v)^TG(G^{-1}v)=v^TG^{-1}v.
+\end{aligned}
+$$
+
+Every compatible field has the form \(f=\mathcal Sv+w\), with \(\mathcal Ow=0\). Since
+
+$$
+\langle\mathcal Sv,w\rangle_H
+=\langle G^{-1}v,\mathcal Ow\rangle_{\mathbb R^N}=0,
+$$
+
+Pythagoras gives \(\|f\|_H^2=v^TG^{-1}v+\|w\|_H^2\). The unique minimizer is therefore \(\mathcal Sv\). This also shows that \(\mathcal S\mathcal O\) is the orthogonal projection onto the observation representer span. For multiple channels, apply the construction independently and sum the squared norms.
+
+For any state increment, linearity yields \(\mathcal S(u+\Delta u)-\mathcal Su=\mathcal S\Delta u\). For a differentiable trajectory and fixed \(\mathcal S\), it yields \(d(\mathcal Su)/d\tau=\mathcal S\dot u\). If the observation geometry changes, this identity alone does not describe the transfer between spans.
+
+### A.2. Fourier weights and the two-mode lift {#rkhs-spectral-proof}
+
+Take linearly independent real basis functions \(\phi_k\), positive weights \(c_k\), and the finite kernel \(K(x,q)=\sum_k c_k\phi_k(x)\phi_k(q)\). For \(f=\sum_k b_k\phi_k\), the induced RKHS norm is \(\|f\|_H^2=b^TC^{-1}b\), where \(C=\operatorname{diag}(c_k)\). This follows by using the orthonormal RKHS basis \(\sqrt{c_k}\phi_k\); it is not a claim that the \(\phi_k\) are orthonormal under spatial quadrature.
+
+Let \(A_{ik}=\mathcal O_i\phi_k\), so observations satisfy \(Ab=v\). If \(ACA^T\succ0\), the Lagrangian \(\tfrac12b^TC^{-1}b-\lambda^T(Ab-v)\) gives
+
+$$
+b=CA^T\lambda,\qquad
+\lambda=(ACA^T)^{-1}v,\qquad
+b=CA^T(ACA^T)^{-1}v.
+$$
+
+Thus the Fourier coefficients \(b\) and the representer coefficients \(\lambda\) are different coordinates for the same lift. Smaller \(c_k\) increases the norm cost of a coefficient; it does not exclude that mode.
+
+For the two-mode toy, \(C=\operatorname{diag}(1,\rho)\), \(A=(1,-1)\), and \(v=1\). Hence \(G=1+\rho\) and \((a,b)=(1,-\rho)/(1+\rho)\). The invisible direction has coefficients \((1,1)\); its inner product with the lift is
+
+$$
+\frac{1}{1+\rho}+\frac{-\rho}{\rho(1+\rho)}=0.
+$$
+
+Adding a second sensor at \(x=1/12\) gives
+
+$$
+A_2=\begin{pmatrix}1&-1\\1/2&1\end{pmatrix},
+\qquad v_2=\begin{pmatrix}1\\1/2\end{pmatrix}.
+$$
+
+Since \(\det A_2=3/2\), these readings uniquely identify \((a,b)=(1,0)\). The result is independent of \(\rho>0\) because the feasible set now contains just one coefficient vector. It assumes exact readings and this particular two-dimensional function space.
+
+### A.3. Regression optimum and probability transport {#rkhs-regression-proof}
+
+Condition on geometry, context, and noise level. Let \(U,V\) have finite second moments, with fixed positive-definite \(G\), and let \(m(U)=\mathbb E[V\mid U]\). For any predictor \(v\) of finite risk, expand the square and use \(\mathbb E[V-m(U)\mid U]=0\):
+
+$$
+\mathbb E\|v(U)-V\|_{G^{-1}}^2
+=\mathbb E\|v(U)-m(U)\|_{G^{-1}}^2
++\mathbb E\|V-m(U)\|_{G^{-1}}^2.
+$$
+
+Positive definiteness makes \(m\) the unique optimum up to sets of zero probability. Replacing \(G\) by \(I\) leaves this optimum unchanged for the same joint law of \((U,V)\). The second term is irreducible conditional variance; the raw loss therefore does not equal velocity-approximation error.
+
+For the colored prediction \(v_\theta=G^{1/2}w_\theta\), the quadratic is exactly \(\|w_\theta-G^{-1/2}V\|_2^2\). This identity concerns output coordinates, not the conditioning of the full neural-network optimization problem. The implemented frame masks and averaging further determine how training examples contribute.
+
+For completeness, let \(U_\vartheta=\cos\vartheta\,Y+\sin\vartheta\,Z\), so \(dU_\vartheta/d\vartheta=V_\vartheta\). For a smooth compactly supported test function \(\psi\), finite moments justify
+
+$$
+\frac{d}{d\vartheta}\mathbb E\psi(U_\vartheta)
+=\mathbb E[\nabla\psi(U_\vartheta)\cdot V_\vartheta]
+=\mathbb E[\nabla\psi(U_\vartheta)\cdot m_\vartheta(U_\vartheta)].
+$$
+
+This is the weak continuity equation for the prescribed marginal laws. A unique ODE flow realizing those laws requires additional velocity regularity. Under a generation schedule \(\vartheta(\tau)\), the drift is \(\dot\vartheta(\tau)m_{\vartheta(\tau)}\); decreasing angle supplies the generation direction. A finite DDIM discretization is a separate numerical approximation.
+
+### A.4. Gaussian covariance matching {#rkhs-gaussian-proof}
+
+Let \(Y\sim\mathcal N(0,\Sigma)\), \(Z\sim\mathcal N(0,G)\) be independent, with \(\Sigma,G\succ0\). For \(U=aY+sZ\), \(V=aZ-sY\), and \(a^2+s^2=1\),
+
+$$
+Q=\operatorname{Cov}(U)=a^2\Sigma+s^2G,
+\qquad \operatorname{Cov}(V,U)=as(G-\Sigma).
+$$
+
+Joint Gaussian conditioning gives
+
+$$
+\mathbb E[V\mid U=u]=as(G-\Sigma)Q^{-1}u.
+$$
+
+No commutation assumption is needed for this matrix formula. In one dimension it becomes the expression in Section 6. When \(G=\Sigma\), \(Q=\Sigma\) for every angle and the marginal drift vanishes. The conditional-variance term in Appendix A.3 can nevertheless remain positive: sample-pair paths move even when the marginal law stays constant.
+
+### A.5. Exact spiral velocity and numerical scope {#rkhs-toy-protocol}
+
+The spiral target is an equal mixture of \(J=96\) Gaussians, \(Y\mid j\sim\mathcal N(\mu_j,\sigma^2I)\), with \(\sigma=0.12\). The centered means follow the stretched curve specified in the [script](materials/toy-rkhs-flow/run.py). Its covariance is \(\Sigma=J^{-1}\sum_j\mu_j\mu_j^T+\sigma^2I\). Within a component, define
+
+$$
+Q=a^2\sigma^2I+s^2G,
+\qquad B=as(G-\sigma^2I)Q^{-1}.
+$$
+
+Gaussian conditioning gives \(\mathbb E[V\mid U=u,j]=-s\mu_j+B(u-a\mu_j)\). The posterior component probabilities are
+
+$$
+\pi_j(u)=\frac{\exp[-\tfrac12(u-a\mu_j)^TQ^{-1}(u-a\mu_j)]}
+{\sum_{\ell=1}^J\exp[-\tfrac12(u-a\mu_\ell)^TQ^{-1}(u-a\mu_\ell)]},
+$$
+
+so the exact marginal velocity is
+
+$$
+v^*(u,\vartheta)=\sum_{j=1}^J\pi_j(u)\big[-s\mu_j+B(u-a\mu_j)\big].
+$$
+
+Positive component variance keeps the target nonsingular. We compare \(G=\Sigma\) with \(G=\operatorname{tr}(\Sigma)I/2\). The diagnostic \(\mathcal A(G)\) uses a common Euclidean metric and angle interval, 4,096 independent source-target pairs, and trapezoidal quadrature at 129 angles. Source choices share the target draws and standard-normal source draws. Standard errors are computed across per-pair integrals, retaining dependence across angles. The diagnostic is schedule-dependent and is not minimized over paths or couplings.
+
+The [recorded checks](materials/toy-rkhs-flow/results.json) include the zero-drift Gaussian identity, a finite-difference continuity-equation residual below \(2.7\times10^{-7}\), and changes below \(10^{-5}\) when refining from 65 to 129 angles. For 100 common matched-source particles, the RMS endpoint change from 120 to 240 RK4 steps is below \(2.7\times10^{-7}\). This tests numerical sensitivity, not neural learning or a benchmark-level distributional guarantee. The separate [lift script](materials/toy-rkhs-lift/run.py) checks exact re-observation, norm identities, null-space orthogonality, update linearity, and two-sensor recovery.
 
 ## References
 

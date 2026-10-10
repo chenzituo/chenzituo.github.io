@@ -263,5 +263,29 @@
     },
     "license_url": null,
     "changes": "Complete figure content extracted from the PDF page and rasterized; surrounding text and original caption omitted. New explanatory caption and source credit supplied in the blog."
+  },
+  {
+    "image": "../figures/rkhs-flow-spiral-toy.png",
+    "source_script": "toy-rkhs-flow/run.py",
+    "results": "toy-rkhs-flow/results.json",
+    "created": "2026-10-10",
+    "type": "original numerical illustration",
+    "description": "Exact conditional-mean cosine velocity for Gaussian and spiral-mixture targets; known covariance, no neural training. See toy-rkhs-flow/README.md for protocol and scope."
+  },
+  {
+    "image": "../figures/rkhs-flow-toy-drift.png",
+    "source_script": "toy-rkhs-flow/run.py",
+    "results": "toy-rkhs-flow/results.json",
+    "created": "2026-10-10",
+    "type": "original numerical illustration",
+    "description": "Exact conditional-mean cosine velocity for Gaussian and spiral-mixture targets; known covariance, no neural training. See toy-rkhs-flow/README.md for protocol and scope."
+  },
+  {
+    "image": "../figures/rkhs-lift-two-mode-toy.png",
+    "source_script": "toy-rkhs-lift/run.py",
+    "results": "toy-rkhs-lift/results.json",
+    "created": "2026-10-10",
+    "type": "original numerical illustration",
+    "description": "Exact two-mode finite RKHS: kernel-dependent minimum-norm velocity lifts, field updates, null-space ambiguity, and two-sensor identification. No source sampling or neural training."
   }
 ]
