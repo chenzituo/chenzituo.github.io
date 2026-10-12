@@ -80,6 +80,10 @@ menu:
       name: Archive
       url: /archives/
       weight: 20
+    - identifier: reads
+      name: Reads
+      url: /reads/
+      weight: 25
     - identifier: search
       name: Search
       url: /search/
