@@ -882,11 +882,13 @@ For coupled random initial states, an RMS version gives a corresponding Wasserst
 
 ## 6. RKHS Flow: from observed velocities to field updates {#what-makes-an-rkhs-flow-functional}
 
-A model may predict changes at a finite set of sensors while its intended output is a changing physical field. An RKHS gives us a concrete way to connect the two: **choose a field geometry, lift the predicted readings into a function, and measure velocity errors in that same geometry.** Our [October 7 implementation notes](materials/rkhs_dfot_architecture_20261007/architecture_and_smoke.pdf) instantiate this construction for DynaBench. Two small examples below separate its field-extension rule from its choice of generative source. The [appendix](#rkhs-flow-proofs) supplies the derivations.
+A model may predict changes at a finite set of sensors while its intended output is a changing physical field. What should that update do between the sensors, and which field errors should training penalize? An RKHS gives a concrete answer: **choose a field geometry, lift the predicted readings into a function, and measure velocity errors in that same geometry.** This makes the represented field and its distribution explicit. We can then distinguish errors caused by missing observations from errors caused by learning or sampling the flow.
+
+We develop that argument from a two-mode field example, then examine three choices that shape generation: the source distribution, the pairing of source and target samples, and their interpolation path. The [appendix](#rkhs-flow-proofs) supplies proofs and the numerical protocols. The examples explain these choices; they do not assume that a particular kernel improves every PDE forecast.
 
 ### What the network predicts
 
-The model evolves 900 observation values per field. Forecasting conditions on eight history frames and generates the next one. The grid backbone is a temporal CNN; the cloud backbone is a point transformer. Both receive raw and whitened observations and per-frame noise levels, and predict a whitened velocity \(w_\theta\).
+Suppose a field is represented through readings at a finite set of locations. During generation, a network predicts how those readings should change, conditioned on the current state, the noise level, and any available context, such as earlier fields. We can express its output as a velocity \(w_\theta\) in whitened coordinates: coordinates in which the chosen observation covariance becomes the identity. The RKHS lift then turns that finite vector into a spatial field update.
 
 Let \(H\) be the chosen RKHS, \(\mathcal O_X:H\to\mathbb R^N\) the bounded observation operator, and \(G=\mathcal O_X\mathcal O_X^*\) its positive-definite Gram matrix. For one frame and channel, the prediction and its field interpretation are
 
@@ -900,7 +902,7 @@ $$
 
 The network outputs observation-space velocities after coloring by \(G^{1/2}\). The fixed lift \(\mathcal S_X\) gives them a spatial meaning; the sampler need not materialize a dense field at every step. With representers \(r_i=\mathcal O_X^*e_i\), where \(e_i\) is a standard basis vector, the lifted velocity is \(\widetilde v_\theta(q)=\sum_i c_i r_i(q)\), with \(c=G^{-1}v_\theta\). These kernel coefficients follow from a linear solve and vary with the network's current state and conditioning.
 
-For direct point observations, \(r_i(q)=K(x_i,q)\). DynaBench's released readings instead use a local thin-plate RBF observation rule applied to an underlying finite Fourier field. We compose that rule with a Fourier covariance to form \(G\). The RBF readout and the RKHS covariance kernel therefore play different roles. An arbitrary RKHS function need not have an exact expansion over these \(N\) representers; our finite expansion comes from selecting the observation span.
+For direct point observations, \(r_i(q)=K(x_i,q)\). For averaged or interpolated readings, the representers instead incorporate that observation rule. This distinction matters: the observation operator describes what is measured, while the kernel describes the geometry used to extend those measurements into a field. An arbitrary RKHS function need not have an exact expansion over these \(N\) representers; the finite expansion comes from selecting the observation span.
 
 ### What the lift makes optimal
 
@@ -933,16 +935,16 @@ For \(\rho=0.1\), the coefficients are approximately \((0.909,-0.091)\); for \(\
 
 The function \(h=\phi_1+\phi_3\) vanishes at the sensor. Adding any multiple of it preserves the reading; the lift chooses the smallest-norm member of this family. If the reference velocity is \(\phi_1\), a second reading \(v(1/12)=1/2\) identifies both coefficients, and either kernel recovers the reference. This is exact because the example assumes only two modes and now has two independent measurements. [Appendix A.2](#rkhs-spectral-proof) works through the calculation. The toy explains the lift without any neural training or source sampling.
 
-### How spectral weights enter the implementation
+### How spectral weights shape the field and the loss
 
-Our finite Fourier prior assigns mode variances
+For a periodic field, one way to define the geometry is to assign positive weights to a finite collection of Fourier modes. For example, take
 
 $$
 c_k\propto\left(1+\frac{k_x^2+k_y^2}{16}\right)^{-3},
 \qquad C=\operatorname{diag}(c_k),\qquad G=ACA^T,
 $$
 
-where \(A\) observes the unscaled Fourier basis. All 4,096 basis coefficients have positive variance. Higher frequencies receive smaller weights. Their effects depend on where those weights enter:
+where \(A\) maps the unscaled Fourier coefficients to observations. The constants in this example set the scale and rate of spectral decay; other choices express different smoothness preferences. Higher frequencies receive smaller weights. Their effects depend on where those weights enter:
 
 | Operation | Effect of the spectral geometry |
 | --- | --- |
@@ -950,7 +952,7 @@ where \(A\) observes the unscaled Fourier basis. All 4,096 basis coefficients ha
 | Field lift | Chooses coefficients minimizing \(\sum_k b_k^2/c_k\) subject to the predicted readings. |
 | Velocity loss | Penalizes errors along low-variance observation directions more strongly. |
 
-The lift discourages **unsupported high-frequency content**. The loss asks for **accurate low-variance components when they are present in the target**. In particular, the implemented error penalty is
+The lift discourages **unsupported high-frequency content**. The loss asks for **accurate low-variance components when they are present in the target**. The corresponding velocity-error penalty is
 
 $$
 \|\mathcal S_X(v_\theta-V)\|_H^2
@@ -968,16 +970,51 @@ $$
 
 with noise level and conditioning held fixed. Ordinary squared error has the same optimum. The RKHS metric changes how a finite model prioritizes approximation error. Changing the source covariance changes the path itself. [Appendix A.3](#rkhs-regression-proof) separates those two effects and the irreducible variability in the training targets.
 
+### From observation distributions to field distributions {#rkhs-distribution-geometry}
+
+The lift preserves distances exactly when observation space uses the matching metric:
+
+$$
+\|\mathcal S_Xu-\mathcal S_Xv\|_H^2=(u-v)^TG^{-1}(u-v).
+$$
+
+Its image is the observation representer span \(H_X=\operatorname{ran}\mathcal O_X^*\). On this span, the lift is an isometry: it changes the description of an object without changing its distance to another object. The same correspondence holds for distributions. If \(\mu,\nu\) are observation laws with finite second moments, then
+
+$$
+\boxed{W_{2,H}(\mathcal S_{X\#}\mu,\mathcal S_{X\#}\nu)
+=W_{2,G^{-1}}(\mu,\nu).}
+$$
+
+Here \(\mathcal S_{X\#}\mu\) means the law obtained by lifting a random vector with law \(\mu\); \(W_2\) is the quadratic Wasserstein distance in the indicated metric. Thus matching observation laws in this metric exactly matches their reconstructed field laws. It need not recover the original field law.
+
+To see what remains missing, let \(F\sim\rho\) be a field with finite second moment in \(H\), and write \(P_X=\mathcal S_X\mathcal O_X\). This is the orthogonal projection onto \(H_X\). Every law supported on that span faces the same best possible error:
+
+$$
+\boxed{\inf_{\nu:\,\nu(H_X)=1}W_{2,H}^2(\rho,\nu)
+=\underbrace{\mathbb E\|(I-P_X)F\|_H^2}_{\eta_X^2}.}
+$$
+
+The projected law \(P_{X\#}\rho\) attains this bound. In the two-mode toy, variability along the unobserved direction contributes to \(\eta_X\); perfect sensor predictions cannot recover it. Querying more locations evaluates the same span. Reducing this error requires more informative observations, a richer representation, or a model for the conditional variability in the missing directions. [Appendix A.6](#rkhs-law-proof) proves both identities.
+
+Learning and numerical integration add separate errors. Under the flow regularity assumptions in [Appendix A.7](#rkhs-generation-bound), on a unit generation-time interval,
+
+$$
+W_{2,H}(\widehat\rho,\rho)
+\le \eta_X+e^L\sqrt{\mathcal E_{\rm vel}}+\varepsilon_{\rm num}.
+$$
+
+The terms measure representation error, excess velocity-regression risk amplified by flow sensitivity \(L\), and numerical sampling error. The raw training loss includes irreducible target variance and cannot replace \(\mathcal E_{\rm vel}\). This bound explains why improving the learned velocity cannot repair a missing field direction, and why a good fit still needs a stable sampler.
+
 ### When a suitable source simplifies transport
 
-The current `pred_v` target comes from a cosine corruption path,
+Consider a cosine interpolation between a clean field and Gaussian noise,
 
 $$
 U=aY+sZ,\qquad V=aZ-sY,
 \qquad a=\cos\vartheta,\quad s=\sin\vartheta.
 $$
 
-Here \(Y\) is the clean target and \(Z\) the independent Gaussian source. The target \(V\) is the derivative with respect to noise angle \(\vartheta\). Generation proceeds toward decreasing angles through the implemented DDIM schedule; a continuous generative-time drift includes the factor \(d\vartheta/d\tau\).
+Here \(Y\) is the clean target and \(Z\) the independent Gaussian source. The target \(V\) is the derivative with respect to noise angle \(\vartheta\). At \(\vartheta=0\), the state is the target; at \(\vartheta=\pi/2\), it is the source. Generation follows the learned flow toward decreasing angles. If we parameterize generation by a time \(\tau\), the drift includes the factor \(d\vartheta/d\tau\).
 
 For a centered Gaussian mode with target variance \(\lambda\) and source variance \(g\), [Gaussian conditioning](https://gaussianprocess.org/gpml/chapters/RW2.pdf) gives
 
@@ -986,11 +1023,11 @@ $$
 =\frac{as(g-\lambda)}{a^2\lambda+s^2g}\,u.}
 $$
 
-When \(g=\lambda\), the marginal velocity is zero: every intermediate distribution already equals the target. Individual paired paths still move, but their velocity targets cancel in the conditional mean. Matching variances can therefore remove part of the transport's work. [Appendix A.4](#rkhs-gaussian-proof) derives the formula. Our fixed PDE smoothness prior is a modeling choice; it has not been established to match each history-conditioned target covariance.
+When \(g=\lambda\), the marginal velocity is zero: every intermediate distribution already equals the target. Individual paired paths still move, but their velocity targets cancel in the conditional mean. Matching variances can therefore remove part of the transport's work. [Appendix A.4](#rkhs-gaussian-proof) derives the formula. A smoothness prior, however, need not match the target covariance. In a forecasting problem, that covariance can also depend on the observed history, so a fixed source may simplify some conditional transports more than others.
 
 A stretched two-dimensional spiral makes the remaining work visible. We place 96 small Gaussian components along a curve, obtaining a known target covariance \(\Sigma\) and an analytic conditional velocity. Compare sources \(\mathcal N(0,\Sigma)\) and \(\mathcal N(0,\tfrac12\operatorname{tr}(\Sigma)I)\), with equal total variance and the same cosine schedule. The matched source already has the target's elongated spread. The flow still has to form the spiral's curved structure.
 
-{{< figure src="figures/rkhs-flow-spiral-toy.png" link="figures/rkhs-flow-spiral-toy.png" alt="Two rows compare isotropic and covariance-matched Gaussian sources as they flow into a stretched spiral. Columns show source samples, the halfway state, generated endpoints, and independent target samples." caption="**Figure 17.** A two-dimensional illustration of source geometry. Each row follows 700 samples through the analytic mixture velocity using 120 RK4 steps. Axes and total source variance are matched. This is a finite-dimensional transport toy, with known target covariance and no neural training; it does not evaluate the DynaBench RKHS lift. Original computation; [reproduction script](materials/toy-rkhs-flow/run.py) and [results](materials/toy-rkhs-flow/results.json)." >}}
+{{< figure src="figures/rkhs-flow-spiral-toy.png" link="figures/rkhs-flow-spiral-toy.png" alt="Two rows compare isotropic and covariance-matched Gaussian sources as they flow into a stretched spiral. Columns show source samples, the halfway state, generated endpoints, and independent target samples." caption="**Figure 17.** A two-dimensional illustration of source geometry. Each row follows 700 samples through the analytic mixture velocity using 120 RK4 steps. Axes and total source variance are matched. This is a finite-dimensional transport toy, with known target covariance and no neural training; it illustrates source design separately from the spatial RKHS lift. Original computation; [reproduction script](materials/toy-rkhs-flow/run.py) and [results](materials/toy-rkhs-flow/results.json)." >}}
 
 This toy isolates source design; it contains no spatial field lift. To measure its effect in common coordinates, integrate the squared marginal drift along the prescribed probability path:
 
@@ -1003,13 +1040,55 @@ For the spiral, the estimates are \(1.116\) for the isotropic source and \(0.438
 
 {{< figure src="figures/rkhs-flow-toy-drift.png" link="figures/rkhs-flow-toy-drift.png" alt="Integrated squared angular drift for Gaussian and spiral targets. Covariance matching gives zero for the Gaussian target and reduces the estimate from 1.116 to 0.438 for the spiral target." caption="**Figure 18.** Covariance matching reduces this measure of motion in the constructed examples. Estimates use 4,096 independent source-target pairs and 129 angle values; error bars are plus or minus 1.96 Monte Carlo standard errors. Increasing quadrature from 65 to 129 angles changes each estimate by less than 0.00001. The quantity is schedule-dependent and does not measure training time, solver cost, or optimality over all transport paths. Original computation." >}}
 
-### What is functional, and what remains to test?
+### Choosing which source and target functions to pair {#rkhs-endpoint-coupling}
 
-At fixed geometry, linearity gives \(\Delta f=\mathcal S_X\Delta u\). Thus observation updates define coherent field updates and an explicit field-error norm. Arbitrary query locations evaluate that same field; they do not add representational directions or observations. The two-mode toy demonstrates this construction and its unobserved directions. The spiral demonstrates a possible benefit of source covariance selection.
+Source design changes where transport starts. Endpoint coupling changes which source sample is paired with which target during training. [Xu et al. (2026)](https://arxiv.org/abs/2609.38049) use a kernel on **whole functions** to compute an entropic optimal-transport plan before constructing the training paths. Their kFFM kernel supplies a pairing cost; our spatial kernel supplies the field lift. These are different roles that can be combined.
 
-These updates implement generative transport. They have not been identified with the negative functional gradient of a field objective. [Adaptive FGD](https://arxiv.org/html/2606.16926v1#S3) additionally requires a gradient relationship and control of approximation error under its stated assumptions. Our model uses AdamW to train network weights and a fixed representation during sampling, so those descent guarantees do not transfer automatically.
+At a fixed observation geometry, a natural pairing cost is already available:
 
-The next empirical question is whether this geometry improves learned transport at matched capacity and compute. Lower squared drift alone does not establish lower velocity sensitivity, faster training, or better forecasts. An imperfect-covariance comparison and new-observation field errors would begin to test those links. Expanding the representation raises a further question: how should newly available directions evolve and acquire uncertainty?
+$$
+d_X^2(u,v)=\|\mathcal S_Xu-\mathcal S_Xv\|_H^2
+=(u-v)^TG^{-1}(u-v).
+$$
+
+Alternatively, a Gaussian kernel on the reconstructed fields gives the bounded cost
+
+$$
+\kappa_X(u,v)=\exp\!\left[-\frac{d_X^2(u,v)}{2\sigma^2}\right],
+\qquad c_\kappa(u,v)=2[1-\kappa_X(u,v)].
+$$
+
+The quadratic cost measures squared field distance exactly on \(H_X\). The bounded cost compresses large distances, so minimizing it solves a different transport problem. Neither cost sees components outside the represented span. The paper's theorems establish properties of its coupling objective and its discretization; improvements in generated samples are empirical results. Its turbulent-flow comparison also shows why source choice must be controlled: kernel and raw-\(L^2\) coupling give overlapping results with the same white-noise source (Section 4.2, Table 4).
+
+A coupling preserves both endpoint distributions. In forecasting, it must preserve them **conditional on the history**: global matching across unrelated histories can change the source law seen for each history. Sampling endpoint pairs from a plan preserves its marginals in law; replacing endpoints with their barycentric averages generally does not. These choices matter before any neural training begins.
+
+### Why pairing and interpolation must be chosen together {#rkhs-coupling-schedule}
+
+Closer endpoint pairs need not reduce motion under every interpolation. For the controls below, \(t\in[0,1]\) denotes normalized generation time, with physical time held fixed. Consider the simplest case: source and target are both standard Gaussian. Independent samples \(Y,Z\) give a stationary marginal law under the cosine path above. Pairing each sample with itself, \(Z=Y\), instead gives
+
+$$
+U_t=\left[\sin\!\left(\frac{\pi t}{2}\right)+\cos\!\left(\frac{\pi t}{2}\right)\right]Y.
+$$
+
+The distribution expands and contracts, even though this identity coupling has zero endpoint distance. With affine interpolation, \(U_t=(1-t)Z+tY\), identity pairs remain stationary. Independent pairs instead contract and expand. The coupling and the schedule jointly determine the intermediate distributions.
+
+{{< figure src="figures/rkhs-coupling-schedule-gaussian.png" link="figures/rkhs-coupling-schedule-gaussian.png" alt="Standard-deviation curves and exact drift actions for identical Gaussian endpoint laws: independent pairing is stationary under cosine interpolation, while identity pairing is stationary under affine interpolation." caption="**Figure 19.** Identical endpoint laws can still produce moving intermediate laws. All four cases use generation time from zero to one; the cosine schedule is parameterized in the source-to-target direction. The plotted action uses the conditional-mean velocity, not individual pair velocities. The identity coupling is the zero-cost quadratic-OT limit, not a finite-entropy plan. Original analytic calculation; [script](materials/toy-rkhs-coupling/run.py), [results](materials/toy-rkhs-coupling/results.json), and [derivation](#rkhs-coupling-proof)." >}}
+
+We also test a non-Gaussian spiral target while holding the endpoint laws fixed. Both endpoints are smooth mixtures with 24 Gaussian components. The source centers approximate a Gaussian cloud and have the same covariance as the spiral centers; this source is a fixed mixture, not the exact Gaussian used in Figure 17. We compare independent component labels with quadratic and bounded-kernel entropic transport between labels. Gaussian fluctuations within each paired component remain independent. The resulting joint mixtures have analytic marginal velocities.
+
+{{< figure src="figures/rkhs-coupling-schedule-spiral.png" link="figures/rkhs-coupling-schedule-spiral.png" alt="Squared marginal drift for a fixed smooth spiral target, comparing independent, quadratic-OT, and bounded-kernel-OT component pairing under cosine and affine interpolation." caption="**Figure 20.** Coupling and schedule controls for fixed mixture endpoints. The metric and unit time interval are shared across all six cases. Error bars are plus or minus 1.96 Monte Carlo standard errors from 2,048 pairs; the integral uses 129 time points. OT acts on component labels, not on all possible couplings of the continuous endpoint laws. No neural model is trained. See the [protocol](https://github.com/chenzituo/chenzituo.github.io/blob/main/content/posts/functional-learning/materials/toy-rkhs-coupling/README.md) and [Appendix A.8](#rkhs-coupling-proof)." >}}
+
+For this spiral, quadratic OT lowers the estimated action from \(2.921\) to \(0.335\) under affine interpolation, but raises it from \(1.312\) to \(3.904\) under the cosine schedule. Bounded-kernel OT gives similar estimates, \(0.337\) and \(3.906\), respectively. The endpoint laws have not changed. These controls measure motion along specified marginal paths; they do not measure velocity-learning difficulty or the number of solver steps required. Together with the Gaussian example, they show why a coupling should be assessed with its intended interpolation rather than by endpoint distance alone.
+
+### What the functional interpretation provides
+
+At fixed geometry, linearity gives \(\Delta f=\mathcal S_X\Delta u\). Observation updates therefore define field updates, a field-error norm, and a corresponding geometry of represented distributions. The reconstruction floor identifies what the observations leave unresolved. Source, coupling, and schedule then determine the transport problem within the chosen representation.
+
+A field-valued update can describe different dynamics. Here it transports a probability distribution; the minimum-norm lift alone does not make it the negative functional gradient of a field objective. [Adaptive FGD](https://arxiv.org/html/2606.16926v1#S3) additionally requires a gradient relationship and control of approximation error under its stated assumptions. Training network weights with an optimizer does not establish that relationship for the field updates produced during sampling.
+
+Refining the representation needs a further argument. It requires approximation estimates for the actual observations and compatible source laws across resolutions. In particular, for \(Z_X\sim\mathcal N(0,G_X)\), the expected squared norm of its lift is \(\mathbb E\|\mathcal S_XZ_X\|_H^2=N\). This finite-dimensional source is valid, but its RKHS second moment grows with observation dimension. An infinite-dimensional Gaussian field generally needs a weaker ambient space than its covariance kernel's RKHS. [Appendix A.9](#rkhs-refinement-scope) explains this distinction and the assumptions behind a discretization claim.
+
+The practical motivation is now precise: RKHS geometry lets us say what field the model evolves, what errors its coordinates measure, and which uncertainties remain outside its representation. Better forecasts require those choices to suit the data and the conditional task. A matched experiment should vary source, pairing, or loss geometry separately, and evaluate new-observation errors and generated field statistics alongside training loss.
 
 ## 7. Outlook {#6-outlook}
 
@@ -1098,7 +1177,7 @@ A functional formulation specifies which updates, errors, and laws should agree 
 
 ## Appendix A. RKHS Flow derivations {#rkhs-flow-proofs}
 
-These arguments establish the lift and regression properties used in Section 6. They concern a fixed observation geometry and exact algebra. They do not assume that a trained network attains the population regression optimum. The implementation and toys use finite-dimensional field spaces; no infinite-rank Gaussian with identity covariance on an RKHS is needed.
+These arguments establish the lift, regression, and distributional properties used in Section 6. They are consequences of Hilbert-space projection, conditional expectation, and flow stability; the coupling controls are original illustrative calculations. They concern a fixed observation geometry unless refinement is explicitly discussed. They do not assume that a trained network attains the population regression optimum. The implementation and toys use finite-dimensional field spaces; no infinite-rank Gaussian with identity covariance on an RKHS is needed.
 
 ### A.1. Minimum-norm lift and induced metric {#rkhs-lift-proof}
 
@@ -1219,6 +1298,128 @@ Positive component variance keeps the target nonsingular. We compare \(G=\Sigma\
 
 The [recorded checks](materials/toy-rkhs-flow/results.json) include the zero-drift Gaussian identity, a finite-difference continuity-equation residual below \(2.7\times10^{-7}\), and changes below \(10^{-5}\) when refining from 65 to 129 angles. For 100 common matched-source particles, the RMS endpoint change from 120 to 240 RK4 steps is below \(2.7\times10^{-7}\). This tests numerical sensitivity, not neural learning or a benchmark-level distributional guarantee. The separate [lift script](materials/toy-rkhs-lift/run.py) checks exact re-observation, norm identities, null-space orthogonality, update linearity, and two-sensor recovery.
 
+### A.6. Distribution geometry and the reconstruction floor {#rkhs-law-proof}
+
+Let \(H\) be a real separable RKHS, \(\mathcal O:H\to\mathbb R^N\) bounded, and \(G=\mathcal O\mathcal O^*\succ0\). Write \(M=G^{-1}\), \(\mathcal S=\mathcal O^*G^{-1}\), \(H_X=\operatorname{ran}\mathcal O^*\), and \(P=\mathcal S\mathcal O\). Appendix A.1 shows that \(P\) is the orthogonal projection onto \(H_X\), and that \(\mathcal S:(\mathbb R^N,\|\cdot\|_M)\to H_X\) is an onto isometry with inverse \(\mathcal O|_{H_X}\).
+
+For observation laws \(\mu,\nu\) with finite second moments, every coupling \(\gamma\in\Pi(\mu,\nu)\) pushes forward to a coupling of the lifted laws, with the same cost:
+
+$$
+\int\|\mathcal Su-\mathcal Sv\|_H^2\,d\gamma
+=\int\|u-v\|_M^2\,d\gamma.
+$$
+
+Conversely, applying \(\mathcal O\) to both fields pulls every coupling of the lifted laws back to an observation coupling. Taking infima and square roots proves the Wasserstein isometry. It holds on the represented space; it does not identify arbitrary full-field laws from their observations.
+
+Now let \(F\sim\rho\in\mathcal P_2(H)\), and let \(Q\) have any law supported on \(H_X\). In every coupling of \(F,Q\), orthogonality gives
+
+$$
+\|F-Q\|_H^2=\|(I-P)F\|_H^2+\|PF-Q\|_H^2.
+$$
+
+Thus \(W_{2,H}^2(\rho,\operatorname{Law}(Q))\ge\mathbb E\|(I-P)F\|_H^2\). The coupling \((F,PF)\) attains equality for \(\operatorname{Law}(Q)=P_\#\rho\). This proves the reconstruction floor and \(W_{2,H}(\rho,P_\#\rho)=\eta_X\). The statement presumes \(H\)-valued data of finite second moment; if data live in a weaker ambient space, the error must be formulated in that space instead.
+
+### A.7. A conditional generation-error bound {#rkhs-generation-bound}
+
+Fix geometry and context. Use normalized generation time \(t\in[0,1]\) (the local notation in A.7–A.8), with observation path laws \(p_t\) starting from the chosen source and ending at \(p_1=\mathcal O_\#\rho\). Let \(m_t\) be the conditional-mean velocity for this path. Assume its ODE has a flow realizing \(p_t\), and that the learned velocity \(v_\theta\) also has a well-defined flow and is uniformly \(L\)-Lipschitz in \(\|\cdot\|_M\), where \(M=G^{-1}\) and \(L\ge0\). Assume all terms below are finite. Define
+
+$$
+\mathcal E_{\rm vel}=\int_0^1
+\mathbb E_{U_t\sim p_t}\|v_\theta(U_t,t)-m_t(U_t)\|_M^2\,dt.
+$$
+
+The risk is evaluated along the exact path. It is the population excess risk from Appendix A.3, not a finite training-set estimate. Its time variable is generation time: if \(\vartheta=\vartheta(t)\), both angular velocities are multiplied by \(\dot\vartheta(t)\) before forming this risk.
+
+Couple exact and learned trajectories \(U_t,\widehat U_t\) with the same initial source draw. Splitting their drift difference at \(U_t\) yields
+
+$$
+\frac{d}{dt}\|\widehat U_t-U_t\|_M
+\le L\|\widehat U_t-U_t\|_M
++\|v_\theta(U_t,t)-m_t(U_t)\|_M,
+$$
+
+in the usual almost-everywhere or upper-derivative sense. Gronwall's inequality, Minkowski's inequality, and Cauchy–Schwarz give
+
+$$
+\left(\mathbb E\|\widehat U_1-U_1\|_M^2\right)^{1/2}
+\le \int_0^1e^{L(1-t)}
+\left(\mathbb E\|v_\theta(U_t,t)-m_t(U_t)\|_M^2\right)^{1/2}dt
+\le e^L\sqrt{\mathcal E_{\rm vel}}.
+$$
+
+This coupling bounds the Wasserstein distance between the endpoint observation laws. By Appendix A.6 it also bounds the distance between their lifted laws. Let \(\widehat\rho\) denote the numerically generated, lifted law, and let \(\varepsilon_{\rm num}\) bound its \(W_{2,H}\) distance from the exact learned-ODE endpoint law. The triangle inequality then gives
+
+$$
+\boxed{W_{2,H}(\widehat\rho,\rho)
+\le \eta_X+e^L\sqrt{\mathcal E_{\rm vel}}+\varepsilon_{\rm num}.}
+$$
+
+This is a sufficient-condition bound, not an estimate of the errors of a trained network. It assumes the source is initialized correctly, the target path reaches the desired observation law, and the representation is fixed. A source mismatch or a nonzero terminal smoothing bias needs an additional term. Establishing a bound for a particular DDIM discretization also requires a numerical analysis of that scheme.
+
+### A.8. Coupling and interpolation controls {#rkhs-coupling-proof}
+
+**Matched Gaussian endpoints.** Let \(Y,Z\) be jointly centered scalar Gaussians with unit variances and correlation \(r\). Write \(U_t=a(t)Y+b(t)Z\), \(V_t=\dot aY+\dot bZ\), and
+
+$$
+q_t=a^2+b^2+2rab,\qquad
+h_t=a\dot a+b\dot b+r(\dot ab+a\dot b).
+$$
+
+Gaussian conditioning gives \(m_t(u)=h_tu/q_t\) and \(\mathbb E|m_t(U_t)|^2=h_t^2/q_t\). The cosine schedule in Figures 19–20 uses \(a=\sin(\pi t/2)\), \(b=\cos(\pi t/2)\); the affine schedule uses \(a=t\), \(b=1-t\). Both run from source to target over the same unit interval. Independent pairing has \(r=0\); identity pairing has \(r=1\), for which the same formulas follow directly from \(Z=Y\). Integration gives
+
+| Schedule | Independent pairing | Identity pairing |
+| --- | --- | --- |
+| Cosine | \(0\) | \(\pi^2/4-\pi/2\approx0.897\) |
+| Affine | \(2-\pi/2\approx0.429\) | \(0\) |
+
+These are marginal-drift actions \(\int_0^1\mathbb E|m_t(U_t)|^2dt\). Identity coupling is an unregularized quadratic-OT optimum for identical marginals. It is not the positive-entropy plan used by kFFM. The example disproves a universal inference from smaller endpoint cost to smaller marginal action under cosine interpolation. It makes no universal ordering claim about learned models. The unit-time cosine actions include the schedule derivative; they therefore differ from the angle-time actions in Figures 17–18 by a factor \(\pi/2\).
+
+**Smooth spiral endpoints.** The [reproduction script](materials/toy-rkhs-coupling/run.py) fixes 24 source centers \(z_i\) and 24 spiral centers \(y_j\). Both sets are centered and have equal empirical covariance. Add independent isotropic Gaussian fluctuations of standard deviation \(\sigma_0=0.30\) to each endpoint. A joint law is specified by a label plan \(\pi_{ij}\) with every row and column summing to \(1/24\):
+
+$$
+(Z,Y)\mid(i,j)\sim
+\mathcal N(z_i,\sigma_0^2I)\otimes\mathcal N(y_j,\sigma_0^2I).
+$$
+
+We compare the product label plan with entropic label plans minimizing quadratic cost \(d_{ij}^2=\|z_i-y_j\|_2^2\) or bounded cost \(2[1-\exp(-d_{ij}^2/(2s^2))]\), where \(s^2\) is the median squared center distance. Each cost matrix is divided by its median, and Sinkhorn uses \(\epsilon=0.05\). The optimization is over component labels with independent within-component noises. It is not the unrestricted continuous OT problem or an implementation of the paper's complete training procedure. All three plans nevertheless define exactly the same source and target mixture laws.
+
+For a schedule \(a,b\), each path component has mean \(c_{ij}=bz_i+ay_j\) and covariance \(qI=\sigma_0^2(a^2+b^2)I\). Its conditional-mean velocity is
+
+$$
+m_{ij,t}(u)=\dot bz_i+\dot ay_j+
+\frac{a\dot a+b\dot b}{a^2+b^2}(u-c_{ij}).
+$$
+
+Weighting these velocities by
+\(p(i,j\mid u)\propto\pi_{ij}\exp[-\|u-c_{ij}\|_2^2/(2q)]\)
+gives the exact marginal velocity of the joint-mixture path. Positive \(\sigma_0\) avoids the discrete-path degeneracy in which almost every intermediate point identifies its endpoint pair.
+
+For each plan, 2,048 pairs are sampled using common random uniforms and Gaussian fluctuations. The integral uses 129 equally spaced times. Standard errors are computed across per-pair time integrals, retaining dependence across time. The [recorded checks](materials/toy-rkhs-coupling/results.json) verify plan marginals to below \(10^{-12}\), endpoint covariance matching to below \(10^{-12}\), and the finite-difference continuity equation to below \(10^{-7}\). Refining quadrature from 65 to 129 times changes every mean action by less than \(0.001\). The source is a Gaussian-like finite mixture, so these numbers should not be compared as matched trials with the exact Gaussian source of Figure 17.
+
+### A.9. What a refinement guarantee would require {#rkhs-refinement-scope}
+
+An exact lift at each resolution does not by itself give a convergence rate between resolutions. For an \(H\)-orthogonal projection \(P_X\), suppose a field class satisfies \(\sup_f\|(I-P_X)f\|_H\le\delta_X\). Then
+
+$$
+0\le\|f-g\|_H^2-\|P_Xf-P_Xg\|_H^2
+=\|(I-P_X)(f-g)\|_H^2\le4\delta_X^2.
+$$
+
+For the Gaussian kernel \(\kappa(f,g)=\exp[-\|f-g\|_H^2/(2\sigma^2)]\), the corresponding cost difference is at most \(4\delta_X^2/\sigma^2\). This also bounds the absolute difference between the entropic OT objective values for the original laws and their projections, under the usual standard-Borel and integrability assumptions. One direction follows by projecting a coupling and using KL data processing. The reverse direction lifts a projected coupling by independently drawing original fields conditional on their projections; this preserves its KL relative to the product marginals and incurs at most the stated cost error.
+
+The rate is only as good as the estimate for \(\delta_X\). In Xu et al.'s Theorem 3, \(P_N\) is Fourier projection and the fields lie in a bounded \(H^\alpha\) ball, with error measured in \(H^k\), \(\alpha>k\). The squared tail is \(O(N^{-2(\alpha-k)/d})\). An observation-induced projection on irregular sensors needs its own approximation estimate. No rate for a learned flow follows from a bound on an OT objective value alone. A Gaussian law is also not supported in a fixed bounded Sobolev ball; extending such a uniform estimate to it needs moment or tail control.
+
+Finally, distinguish the reconstruction RKHS from the ambient space carrying a Gaussian field. At finite observation dimension,
+
+$$
+Z_X\sim\mathcal N(0,G_X)
+\quad\Longrightarrow\quad
+\mathbb E\|\mathcal S_XZ_X\|_H^2
+=\operatorname{tr}(G_X^{-1}G_X)=N.
+$$
+
+Thus these sources do not have uniformly bounded second moments in the RKHS as \(N\) grows. For an infinite-rank covariance expansion \(Z=\sum_k\sqrt{c_k}\xi_k\phi_k\), the formal covariance-RKHS norm is \(\sum_k\xi_k^2\), which diverges almost surely for independent standard Gaussian \(\xi_k\). The field can still be a valid random element of a weaker ambient Hilbert space when its covariance is trace class there. Its Cameron–Martin space describes shifts, not typical draws. Our finite-dimensional examples avoid this infinite-rank issue; a continuum extension must specify the ambient norm, data and source regularity, and approximation of both laws before applying a distributional error bound.
+
 ## References
 
 1. Csillag, D., et al. [Functional Gradient Descent with Adaptive Representations](https://arxiv.org/abs/2606.16926). arXiv:2606.16926, 2026.
@@ -1238,6 +1439,7 @@ The [recorded checks](materials/toy-rkhs-flow/results.json) include the zero-dri
 15. Furuya, T., Taniguchi, K., and Okuda, S. [Quantitative Approximation for Neural Operators in Nonlinear Parabolic Equations](https://proceedings.iclr.cc/paper_files/paper/2025/hash/d4b6ccf3acd6ccbc1093e093df345ba2-Abstract-Conference.html). ICLR, 2025; preprint first posted in 2024.
 16. Calvello, E., Kovachki, N. B., Levine, M. E., and Stuart, A. M. [Continuum Attention for Neural Operators](https://www.jmlr.org/papers/v26/24-0879.html). JMLR 26(300):1–52, 2025.
 17. Wang, S., Yu, X., and Perdikaris, P. [When and why PINNs fail to train: A neural tangent kernel perspective](https://arxiv.org/abs/2007.14527). arXiv:2007.14527, 2020.
+18. Xu, F., Markovich, T., Barancikova, B., and Sun, Y. [Improving Function Space Flow Matching with Kernel Optimal Transport](https://arxiv.org/abs/2609.38049). arXiv:2609.38049v1, 2026.
 
 ## Cite this note
 

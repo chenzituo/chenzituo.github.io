@@ -1,0 +1,9 @@
+{
+  "reobservation_max_error": 1.0547118733938987e-15,
+  "orthogonal_projection_max_error": 2.8492833092919057e-16,
+  "pairwise_isometry_max_error": 3.552713678800501e-15,
+  "wasserstein_squared_cost_difference": 0.0,
+  "projection_floor": 4.902790671211732,
+  "projection_floor_attainment_error": 0.0,
+  "source_rkhs_second_moment": 2.9999999999999996
+}

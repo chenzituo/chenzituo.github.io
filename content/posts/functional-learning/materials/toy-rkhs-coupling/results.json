@@ -1,0 +1,79 @@
+{
+  "seed": 20261012,
+  "time_interval": [
+    0,
+    1
+  ],
+  "gaussian": {
+    "Cosine / Independent": {
+      "action_exact": 0.0,
+      "quadrature": 2.7292241640431934e-33
+    },
+    "Cosine / Identity": {
+      "action_exact": 0.8966047734774429,
+      "quadrature": 0.8966047927286733
+    },
+    "Affine / Independent": {
+      "action_exact": 0.42920367320510344,
+      "quadrature": 0.42920367817215715
+    },
+    "Affine / Identity": {
+      "action_exact": 0.0,
+      "quadrature": 0.0
+    }
+  },
+  "spiral": {
+    "Cosine / Independent": {
+      "action": 1.3122736865467655,
+      "mc_standard_error": 0.028077483171039575,
+      "quadrature_65_to_129_change": 5.8322793261567085e-08,
+      "paired_target_action": 11.95014306893631
+    },
+    "Affine / Independent": {
+      "action": 2.9205242112534284,
+      "mc_standard_error": 0.0487628844086575,
+      "quadrature_65_to_129_change": 0.0002704805904825136,
+      "paired_target_action": 9.862571805993898
+    },
+    "Cosine / Quadratic OT": {
+      "action": 3.9040343602861367,
+      "mc_standard_error": 0.07942235272844687,
+      "quadrature_65_to_129_change": 0.0008341973288743532,
+      "paired_target_action": 4.866410139242065
+    },
+    "Affine / Quadratic OT": {
+      "action": 0.334772662021374,
+      "mc_standard_error": 0.004915755089992122,
+      "quadrature_65_to_129_change": 2.0091295254154318e-06,
+      "paired_target_action": 0.9593901949890905
+    },
+    "Cosine / Bounded-kernel OT": {
+      "action": 3.906282357055328,
+      "mc_standard_error": 0.07960114664283556,
+      "quadrature_65_to_129_change": 0.0008386829349000813,
+      "paired_target_action": 4.85705874908799
+    },
+    "Affine / Bounded-kernel OT": {
+      "action": 0.33652330198513725,
+      "mc_standard_error": 0.005015974247531624,
+      "quadrature_65_to_129_change": 1.2932220272987571e-06,
+      "paired_target_action": 0.9518564120095921
+    }
+  },
+  "protocol": {
+    "components_per_endpoint": 24,
+    "within_component_sigma": 0.3,
+    "samples": 2048,
+    "time_points": 129,
+    "epsilon_after_cost_median_normalization": 0.05,
+    "source": "fixed covariance-matched Gaussian-like mixture, not an exact Gaussian",
+    "coupling_scope": "OT on component labels; residual Gaussian endpoint noises are independent"
+  },
+  "checks": {
+    "max_plan_marginal_error": 8.00984278903627e-13,
+    "source_target_covariance_error": 6.245004513516506e-17,
+    "max_continuity_residual": 7.807949080340659e-08,
+    "sinkhorn_iterations_quadratic": 661,
+    "sinkhorn_iterations_bounded": 741
+  }
+}

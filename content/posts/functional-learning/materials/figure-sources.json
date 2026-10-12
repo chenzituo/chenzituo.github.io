@@ -287,5 +287,21 @@
     "created": "2026-10-10",
     "type": "original numerical illustration",
     "description": "Exact two-mode finite RKHS: kernel-dependent minimum-norm velocity lifts, field updates, null-space ambiguity, and two-sensor identification. No source sampling or neural training."
+  },
+  {
+    "image": "../figures/rkhs-coupling-schedule-gaussian.png",
+    "source_script": "toy-rkhs-coupling/run.py",
+    "results": "toy-rkhs-coupling/results.json",
+    "created": "2026-10-11",
+    "type": "original analytic and numerical illustration",
+    "description": "Exact standard-Gaussian marginal laws and actions for independent versus identity pairing under cosine and affine interpolation."
+  },
+  {
+    "image": "../figures/rkhs-coupling-schedule-spiral.png",
+    "source_script": "toy-rkhs-coupling/run.py",
+    "results": "toy-rkhs-coupling/results.json",
+    "created": "2026-10-11",
+    "type": "original analytic and numerical illustration",
+    "description": "Fixed smooth-mixture endpoint laws with independent, quadratic-OT, and bounded-kernel-OT component-label pairing; analytic marginal velocities, no neural training."
   }
 ]
