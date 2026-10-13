@@ -1,6 +1,6 @@
 ---
 title: "Walk on Anything: representations, composition, and models for physical fields"
-date: 2026-09-29
+date: 2026-10-12
 lastmod: 2026-10-12
 weight: 10
 draft: false
