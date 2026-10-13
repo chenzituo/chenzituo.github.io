@@ -22,3 +22,7 @@ All extracted figures were inspected as full source pages before cropping, then 
 ## Clarity check
 
 The narrative now states what is invariant before mentioning caching; derives a second boundary-condition response (h = 0.2 for reversed endpoint values); distinguishes physical operators from neural K/V; explains why current LatentDDM prediction tokens change; and compares reuse against numerical factorization reuse. The cost model includes preparation, warm solves and invalidation. Physical correctness and cached/recomputed model equivalence are separate tests. No implementation or timing result is claimed.
+
+## Sequential-modeling refinement
+
+The author's next-work objective is sequential composition, not cache optimization in isolation. `sequential-composition.svg` repeats a marked regional geometry across a history, including a revisit, then separates the causal composer, local operator, updated field and newly appended event. Its history is immutable while the current field is revisable. The earlier static-only architecture is retained as a development asset but no longer displayed. This is original proposed machinery, so a source-paper figure cannot replace it without misattribution.

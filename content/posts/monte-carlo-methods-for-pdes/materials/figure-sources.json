@@ -166,13 +166,24 @@
       "file": "figures/cache-architecture-v2.svg",
       "type": "original proposed architecture",
       "generator": "materials/cache_architecture.py",
-      "displayed_in_article": true,
+      "displayed_in_article": false,
       "design_references": [
         "WoDS Fig. 8: draw the represented operator",
         "Neural shapes Fig. 2: geometry-to-local-patch-to-update sequence",
         "LatentDDM Fig. 1: distinguish local operators from composition"
       ],
       "note": "Static context and dynamic state separated; no measured cache result; independently drawn, not adapted source artwork."
+    },
+    {
+      "file": "figures/sequential-composition.svg",
+      "type": "original proposed sequential architecture",
+      "generator": "materials/sequential_composition.py",
+      "displayed_in_article": true,
+      "design_references": [
+        "WoDS Fig. 5: repeat the domain with a marked region",
+        "LatentDDM Fig. 1: expose local operator and composer roles"
+      ],
+      "note": "Exploratory next work, no solver or timing result. Immutable event history versus revisable assembled field; causal prefix caching within a solve is distinct from static-context caching across solves."
     }
   ],
   "demo": {

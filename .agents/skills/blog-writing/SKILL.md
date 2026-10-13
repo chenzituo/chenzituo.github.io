@@ -23,6 +23,8 @@ Start with the reader's concrete problem, then develop the mechanism and its imp
 
 For supplied papers, verify identity and requested versions. Record inspected pages/sections, claims, extraction gaps, and unresolved comparisons in `materials/reading-ledger.md`; record exact URLs and useful provenance in `sources.json`. Use the available research-paper-reading skill for substantial paper analysis. Keep quotes short, respect source-specific summarization limits, and write original derivations/examples where useful. Do not use abstract-level reading to imply a full theorem or benchmark audit.
 
+When an author states a research objective, organize the outlook around that modeling problem; introduce infrastructure as a consequence of the proposed computation. For sequential PDE models, distinguish physical time, solver iterations, token order, immutable history and revisable current state. Do not replace a sequential-modeling objective with static-context caching alone.
+
 The main text should explain why each equation matters. Define symbols before use. Separate distinct times (physical, diffusion, optimization), norms, and conditional distributions. A theorem's assumptions, a model's expressivity and its measured performance are different evidence levels.
 
 ## Visual exposition

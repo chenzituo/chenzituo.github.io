@@ -5,26 +5,26 @@ lastmod: 2026-10-12
 draft: false
 completed: false
 tags: [pdes, monte-carlo, domain-decomposition, representation-learning, physics-foundation-models]
-summary: "What can we reuse across physical solves? From boundary-response representations to compatible composition and a concrete KV-cacheable model."
+summary: "From local physical responses to sequential PDE solving: an exploratory direction for LatentDDM, with representation, composition, and KV-cacheable inference designed together."
 showtoc: true
 UseHugoToc: true
 math: true
 ShowReadingTime: true
 ---
 
-*A developing research note. The papers below establish several useful solver ideas; the cacheable model proposed here remains a research hypothesis.*
+*A developing research note. The papers below establish several useful solver ideas; sequential composition as a next step for LatentDDM remains a research hypothesis.*
 
-Suppose we want to predict temperature in the same building under hundreds of different boundary conditions. The rooms, walls, and material properties stay fixed. The temperatures imposed outside change. Which parts of the computation should we repeat?
+Suppose we want to solve a temperature field in a building with many rooms. Could a model construct and refine the solution through a sequence of local computations, using what it has already learned about each room and the updates it has already made? If the boundary conditions change, which parts of that work remain useful?
 
-That question connects the three topics of this post:
+This is the direction I want to explore beyond our current LatentDDM work. It connects three design choices:
 
 - **Representation:** describe a region by how it responds to its surroundings, so the description can survive a change of boundary values.
-- **Model:** determine how those local responses fit together into one physically compatible field.
-- **Infrastructure:** store the computations that depend only on persistent context, and reuse them across solves.
+- **Model:** learn a sequence of compositions and corrections that fits local responses into one physically compatible field.
+- **Infrastructure:** retain valid representations of the solve history and persistent context, so sequential inference can reuse work.
 
-Walk-based PDE solvers offer a concrete way to develop this argument. They turn boundary influence into something we can sample, tabulate, and compose. The connection to KV caching comes later: it requires a neural architecture that preserves the same separation between a reusable response and a changing query.
+Walk-based PDE solvers offer a concrete way to develop this argument. They turn boundary influence into something we can sample, tabulate, and compose. The connection to KV caching comes from the proposed sequential model: its growing history can support causal-prefix reuse, while a separate physical-context memory may support reuse across problems.
 
-Julia Balla and Hannah Lawrence's [ICLR article on autoregressive tokenization](https://iclr-blogposts.github.io/2026/blog/2026/autoregressive-tokenization/) motivates the representation question. A representation that reconstructs well may still leave difficult predictions for the model. For physical fields, I want to ask the corresponding question: **does the token contain the information needed to compose and reuse a local computation?** Here a token can be a continuous regional descriptor; it need not be a discrete symbol or imply a spatial prediction order. My [reading note](/reads/autoregressive-tokenization/) develops the original tokenization discussion.
+Julia Balla and Hannah Lawrence's [ICLR article on autoregressive tokenization](https://iclr-blogposts.github.io/2026/blog/2026/autoregressive-tokenization/) motivates the representation question. A representation that reconstructs well may still leave difficult predictions for the model. For physical fields, I want to ask the corresponding question: **does the token contain the information needed to compose and reuse a local computation?** Here a token can be a continuous regional descriptor or a local update event. What to tokenize and how to order the computation are joint research choices; a spatial field does not prescribe either choice for us. My [reading note](/reads/autoregressive-tokenization/) develops the original tokenization discussion.
 
 ## 1. What should a reusable piece of a physical field represent?
 
@@ -131,103 +131,104 @@ These examples help specify the model's job. Sampling guidance, geometric extens
 
 [Divide-and-Denoise](https://arxiv.org/abs/2606.14756v1) provides a broader connection: it allocates responsibility among diffusion models over latent features as a sample evolves. That motivates learning who contributes where. For a physical field, such allocation must still respect the relevant interface and conservation conditions; the image-generation paper does not provide them.
 
-## 3. Why does this lead to a cacheable model?
+## 3. A next step for LatentDDM: model the solve as a sequence
 
-The bridge is **separating an operator from its current input**. A local response map can survive a change of boundary values. A neural implementation can reuse its encoded context only if the architecture preserves that separation.
+The direction I want to explore is **sequential composition of physical fields**. LatentDDM already separates a local response model from the model that chooses its inputs. A possible next step is to let the composer build and refine a solution through a sequence of local decisions. KV caching would support that model's growing computational history.
 
-### First make the numerical reuse concrete
+This is a proposed research direction. The current LatentDDM paper does not demonstrate an autoregressive composition solver or its cache performance.
 
-Return to the two-material interval. For arbitrary endpoint temperatures \(T_L,T_R\), its shared value is
+### What would the sequence contain?
+
+A PDE field does not come with one obvious token order. We could generate spatial field blocks, advance physical time, or generate successive corrections to an approximate solution. Those choices define different learning problems.
+
+For an initial elliptic study, I would explore **a sequence of local solve/update events**. Each event identifies a region, chooses its local conditions or correction, and records the resulting response. A region may appear more than once. The model predicts the next useful computation; it need not commit every region's final field on its first visit.
+
+Let \(\mathcal P\) denote the full problem specification, including geometry, coefficients, forcing, and physical boundary conditions. Let \(\mathcal H_{m-1}\) be the history of completed update events. One candidate step is
+
+$$
+\begin{aligned}
+(i_m,c_m)&=C_\phi(\mathcal P,\mathcal H_{m-1}),\\
+v_m&=S_\theta(\mathcal P_{i_m},c_m),\\
+\mathcal H_m&=\mathcal H_{m-1}\mathbin{\oplus}
+(i_m,c_m,\operatorname{summary}(v_m)).
+\end{aligned}
+$$
+
+Here \(i_m\) selects a region, \(c_m\) supplies its local conditions, and \(S_\theta\) is the local response model. The symbol \(\oplus\) means append a new event. The current full-domain approximation is assembled from the latest regional responses, with a specified rule for overlaps and interfaces. The event history and the current assembled field are different objects; the implementation must keep both consistent.
+
+The index \(m\) counts **solver operations**, not physical time. An unsteady problem could have a physical-time sequence outside this composition loop, but those two axes should be evaluated separately.
+
+This brings Julia Balla and Hannah Lawrence's [tokenization question](https://iclr-blogposts.github.io/2026/blog/2026/autoregressive-tokenization/) directly into the next work: should a token describe a field block, an interface condition, a local response, or an update? And which ordering makes the next conditional prediction learnable? Domain composition supplies candidate units; it does not settle the representation or order.
+
+### Why a causal history can have a KV cache
+
+Suppose the composer encodes its event history with causal attention, conditioned on a fixed \(\mathcal P\). Earlier event representations cannot attend to later events. When a new event arrives, inference can retain the earlier keys and values and append only the new ones:
+
+$$
+\begin{aligned}
+K_{1:m}&=[K_{1:m-1};k_m],\\
+V_{1:m}&=[V_{1:m-1};v_m^{\mathrm{KV}}].
+\end{aligned}
+$$
+
+The superscript distinguishes the attention value vector \(v_m^{\mathrm{KV}}\) from the local physical response \(v_m\). Every attention layer has its own cache. This is ordinary causal-prefix reuse applied to a proposed sequence of physical computations; the standard mechanism is explained in [Hugging Face's cache documentation](https://huggingface.co/docs/transformers/cache_explanation).
+
+**A later event can correct a region without changing the earlier event's historical meaning.** The record “region 1 was updated at step 3” stays fixed even when region 1 is updated again at step 8. The model needs explicit region/step identities and a way to distinguish the latest state from earlier attempts. Merely concatenating old field values and treating them all as current would be incorrect.
+
+[![Proposed sequential composer: full problem context and cached causal update history feed the next local decision, a local operator, and an updated field; each result appends a new event.](figures/sequential-composition.svg)](figures/sequential-composition.svg)
+
+*Original next-work hypothesis. The field can be revised while the event history grows. Causal history K/V is reused within a solve; any separate static-response memory follows its own dependencies. This diagram describes an architecture to test, not a solver result.*
+
+The cache is valid only if earlier token contents, conditioning, positions, masks affecting those tokens, and model weights remain unchanged. Rewriting an earlier event generally requires recomputing its affected suffix. Changing the PDE's boundary values starts a new problem and normally invalidates problem-conditioned history, even if geometry is unchanged. Caching should reproduce the same causal model evaluated without a cache; that equivalence does not establish physical accuracy or convergence.
+
+### Elliptic coupling still requires a global view
+
+A causal model of the *solve* does not make the *physics* spatially one-way. In the two-material example, the interface value depends on both endpoints and both resistances:
 
 $$
 h=\frac{R_R T_L+R_L T_R}{R_L+R_R}.
 $$
 
-The response weights stay fixed while \(T_L,T_R\) change. For \((T_L,T_R)=(0,1)\), \(h=0.8\); for \((1,0)\), \(h=0.2\). We reuse the physical response, then compute a new state.
+Even an early left-region update needs a route to information about the right boundary. The complete problem can be encoded before the update sequence begins, and the composer can also use a coarse global solution or global residual information. The choice of what enters this context is part of the model design.
 
-The same distinction appears in WoDS: with fixed geometry, boundary types, discretization, and estimated operators, the interface matrix can stay fixed while boundary values change the right-hand side. Its factorization can be reused for repeated solves. This is already a strong numerical baseline. Adding a neural cache must improve a relevant workload relative to such reuse, not merely relative to rebuilding everything.
+A one-pass raster scan may propagate errors or miss long-range compatibility. Repeated regional visits, coarse-to-fine sweeps, or learned region selection are candidate alternatives. They need convergence and cost tests. Attention alone does not guarantee conservation; the solve may need an interface correction, projection, or residual-based stopping rule. Computing that residual also costs work and must be included in timing.
 
-### Then decide what the neural memory contains
+The appeal of composition is that each sequential decision can invoke a substantial local computation. Instead of asking a sequence model to predict every scalar field value directly, we can ask it to choose useful conditions for a reusable local model. Whether this makes sequences shorter and conditionals easier is the hypothesis to test.
 
-A possible response token combines local geometry, coefficients, operator identity, coordinate conventions, and a compressed response description. Call the complete persistent context \(s\). Let \(z^{(m)}\) contain the changing boundary values, forcing, and current interface estimates for solve or update \(m\).
+### Keep two kinds of neural memory distinct
 
-An encoder constructs \(E(s)\). At each decoder layer we can form
+The static-context idea remains useful, but it is a second memory beside the causal solve history:
 
-$$
-\begin{aligned}
-K &= E(s)W_K,\\
-V &= E(s)W_V,\\
-Q^{(m)} &= D(z^{(m)})W_Q,\\
-A^{(m)} &= \operatorname{softmax}\!\left(
-\frac{Q^{(m)}K^\top}{\sqrt d}\right)V.
-\end{aligned}
-$$
-
-Here \(d\) is the query/key width. **Keys describe how queries address the persistent context; values carry the features retrieved from it.** The decoder combines that retrieved information with the changing state to predict local conditions or field updates. Layer indices are omitted for readability; each layer has its own projections.
-
-This is an encoder–decoder cross-attention design, a standard distinction reflected in [encoder–decoder model documentation](https://huggingface.co/docs/transformers/model_doc/encoder-decoder). It requires no left-to-right ordering of space. In inference with fixed weights and fixed \(s\), stored K/V give the same cross-attention inputs as recomputing them, up to the chosen numerical precision. The attention weights and output still change with each query.
-
-[![Proposed physical architecture: geometry and response tokens form persistent keys and values; changing field states supply queries for composition and decoding.](figures/cache-architecture-v2.svg)](figures/cache-architecture-v2.svg)
-
-*Original proposed architecture. Geometry, response arrays, and fields make the represented objects visible. The blue path is reusable context; the lower path changes between solves. The field thumbnails are illustrations, not model predictions.*
-
-A response operator and a KV cache are therefore connected, but they are not identical. The first is a physical map; the second stores intermediate neural features. Softmax attention does not automatically become a Poisson kernel, a flux operator, or a conservative interface solver. A decoder and, potentially, a numerical correction must establish those physical properties. Exact cache reuse can preserve a model's output even when that output is physically inaccurate.
-
-### A repeated-solve workload exposes the design choices
-
-Imagine processing 100 boundary-temperature configurations on one building:
-
-1. **Prepare once.** Encode the fixed geometry and material/operator context; construct the per-layer K/V. A numerical baseline similarly prepares local response maps and reusable factorizations.
-2. **Solve each configuration.** Encode its boundary values and changing state, form queries, exchange global/interface information, and decode a field. Recompute all state-dependent operations.
-3. **Check compatibility.** Measure boundary errors, flux mismatch, and field error. If the method uses an interface iteration or projection, include it in both correctness and cost.
-
-There is a real representation tradeoff here. Encoding a current predicted field may make composition easier by providing a problem-specific initial answer, as in LatentDDM. Encoding only a reusable response family increases reuse but may leave more inference work to the decoder. **Cacheability should be a co-design objective, not a reason to discard useful state information.** A model may need both static response memory and a fresh dynamic branch.
-
-In particular, freezing LatentDDM's local operator does not freeze its predictions. Change the boundary conditions and its prediction-conditioned tokens change. Reusing their K/V across those problems would generally be wrong. The proposed static branch is an architectural extension to investigate, not an existing feature of our paper.
-
-### Edits determine the lifetime of the cache
-
-[![Three warehouse configurations from WoDS show how local obstacle changes alter paths throughout a scene.](figures/wods-geometry-edits.png)](figures/wods-geometry-edits.png)
-
-*Jambon, Nabizadeh, and Konaković Luković, [WoDS Fig. 3, p.3](https://clementjambon.github.io/wods/refs/wods.pdf#page=3), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Figure-only crop. Local edits change the global paths. This illustrates numerical operator reuse; it is not evidence of neural KV caching.*
-
-Cache validity follows the actual computational dependencies:
-
-| Workload change | Reusable context in the proposed model | Work that must change |
+| Memory | What it represents | When it can be reused |
 |---|---|---|
-| New boundary **values**, same types and operator | Static response encoding and K/V | Queries, interface solution, decoded field |
-| New coefficient, boundary **type**, or geometry | Only context independent of the edit | Affected response tokens and K/V, then global coupling |
-| New field estimate during an iteration | Static-context K/V | Dynamic queries and any state-to-state attention |
-| Updated encoder or K/V projection weights | No reuse of affected learned features | Re-encoding or projections |
+| Causal history K/V | Earlier update events conditioned on this problem | As the same solve appends events without changing the prefix |
+| Static-context K/V | Geometry, operator attributes, or response descriptors encoded independently of changing conditions | Across updates, and possibly across problems whose encoded context is identical |
+| Numerical response maps / factors | A discretized physical operator | While the defining operator and discretization remain valid |
 
-Local edits do not necessarily mean local neural invalidation. Independent regional encoders permit local replacement; an encoder that globally mixes all regions can change every token after one edit. A hierarchical design may limit recomputation to a region and its ancestors, but that is a dependency property to verify. Stable region identifiers, coordinate conventions, discretization metadata, and model versions are part of the infrastructure that makes such reuse trustworthy.
+For example, changing endpoint temperatures from \((0,1)\) to \((1,0)\) changes \(h\) from 0.8 to 0.2. The resistances remain reusable; the old solve history is not automatically a valid prefix for the new problem. WoDS's fixed interface matrix similarly motivates response and factorization reuse when boundary values change.
 
-For nonlinear or evolving physics, the distinction needs further care. A numerical response linearized around the current state generally changes with that state. A neural geometry-only branch can still be cached, but the dynamic model must account for the state-dependent response. Caching static geometry does not make a nonlinear operator static.
+[![WoDS shows three warehouse configurations in which local obstacle edits change global paths.](figures/wods-geometry-edits.png)](figures/wods-geometry-edits.png)
 
-## 4. What would make this useful at foundation-model scale?
+*Jambon, Nabizadeh, and Konaković Luković, [WoDS Fig. 3, p.3](https://clementjambon.github.io/wods/refs/wods.pdf#page=3), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Figure-only crop. Local edits can preserve some numerical operators while changing the global solution. Neural cache validity must be checked from the model's own dependencies.*
 
-The ambition is a reusable physical representation, a model that composes it accurately, and infrastructure that amortizes repeated computation. The first convincing result should be narrower and measurable.
+This also refines the connection to our existing work. Current LatentDDM tokens describe problem-dependent predictions and are composed jointly. They cannot simply be relabeled as a causal cache. A sequential successor could use those predictions as an initial state, learn an update-event representation, and introduce causal composition. It would need new training and rollout evaluation. For nonlinear problems, local responses may also depend on the changing state; a geometry cache does not remove that dependence.
 
-Caching removes repeated context encoding and K/V projection. It does not remove communication: with \(N\) context tokens, \(M\) queries, width \(d\), and \(L\) layers, cache storage scales as \(O(LNd)\), while dense query–context interactions still scale as \(O(LMNd)\) per update. If every region queries every region, the attention work remains quadratic in the number of regions. Elliptic long-range dependence also prevents us from assuming a fixed local neighborhood is sufficient.
+## 4. What should the next work establish?
 
-This suggests testing local exchanges with a coarse global channel or a numerical interface solve. The representation should support that hierarchy; the infrastructure should batch regional work and retain valid context. Neither a token vocabulary nor a cache by itself supplies global physical consistency.
+The ambition is to co-design **representation + sequential composition model + reusable inference infrastructure**. The first study should establish whether this combination solves a useful class of PDE problems accurately, and whether its sequential work is worth the cost.
 
-The economic test is also workload-dependent. Let \(P\) be one-time preparation cost, \(U\) the cost per solve without reuse, and \(C\) the warm cost including cache access. For \(J\) solves, reuse helps when
+A focused route from LatentDDM is:
 
-$$
-P+JC\lt JU.
-$$
+1. **Choose the sequence with the representation.** On a controlled elliptic task, compare field-block tokens with interface/update tokens. Start with a fixed traversal; compare coarse-to-fine or residual-driven scheduling at matched compute. All variants must receive the same available problem information.
+2. **Test composition on model-generated histories.** Begin with local-response pretraining, then train the composer on reference-solver trajectories or constructed correction sequences. Different valid update orders need not imply one uniquely correct trajectory. Evaluate free-running solves, repeated regional visits, error accumulation, and stopping behavior; teacher-forced next-step accuracy alone is insufficient.
+3. **Isolate the value of sequential modeling.** Compare against current two-pass LatentDDM, iterative numerical/neural coupling, and an appropriate global solver. Match field accuracy and report interface flux mismatch, boundary error, residuals, local-operator calls, and end-to-end latency.
+4. **Test the infrastructure separately.** Run the same causal model with and without prefix caching; check agreement, prefix edits, and changed problem conditioning. Ablate static-context reuse separately. Include numerical baselines that reuse response maps or factorizations.
 
-Thus the break-even workload is \(J>P/(U-C)\) when \(U>C\). Frequent invalidation increases preparation cost; cache memory and transfer can increase \(C\). Report both first-solve latency and repeated-solve throughput.
+Caching avoids re-encoding a growing prefix, but it does not eliminate attention over that prefix or the sequential critical path. With \(T\) update events, \(N\) static context tokens, width \(d\), and \(L\) layers, a dense cached design uses order \(L(T+N)d\) KV storage. Its attention interactions over the full rollout still cost order \(L(T^2+TN)d\), assuming each event attends to its history and static context. These counts exclude the local PDE models, feed-forward layers, context preparation, and physical checks.
 
-A first experiment can follow the argument directly:
+We should therefore measure time to a specified solution error, including preparation and correction. Parallel regional batches, hierarchical summaries, or selective history retrieval may improve scaling, but each changes the dependency structure or model and requires an accuracy check. Reuse across many problems is a separate opportunity from prefix reuse within one solve.
 
-1. **Representation:** compare field tokens and response tokens on fixed-geometry elliptic problems with held-out boundary conditions. Match storage budgets; measure both interface response and interior reconstruction.
-2. **Composition:** hold the local response family fixed and compare numerical, iterative, and learned coupling. Measure field error and interface compatibility separately.
-3. **Cache correctness and value:** compare the same model with recomputed and cached K/V; then test edits and deliberately stale caches. Report cold/warm latency, memory, invalidation cost, and break-even count against a numerical solver that also reuses its preparation.
-4. **Broader transfer:** only after this works, vary geometry, coefficients, physics, and transient histories. Test whether local response knowledge transfers and which components need retraining or rebuilding.
-
-The question I want to pursue is now specific: **can a compact response representation make physical composition accurate and repeated inference cheaper at the same time?** Walk-based solvers clarify the reusable object. Learned composition provides a modeling route. KV-cacheable infrastructure becomes meaningful when the model preserves that object's lifetime across changing physical queries.
+A physics foundation model remains the longer-term goal: transferable local response knowledge and a composition model that can organize computation across geometries, conditions, and tasks. **The next-work hypothesis is that representing a PDE solve as a sequence of physically meaningful compositions makes both the model and its execution more scalable.** Walk-based methods help identify the local objects; LatentDDM supplies the local-model/composer split; causal sequence modeling makes the KV-cache question consequential. The right tokens, order, correction mechanism, and training strategy are still under exploration.
 
 ## Sources and reading scope
 
