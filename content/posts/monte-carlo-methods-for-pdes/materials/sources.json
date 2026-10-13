@@ -1,0 +1,106 @@
+{
+  "reading_date": "2026-10-12",
+  "mode": "targeted comparison",
+  "sources": [
+    {
+      "key": "guiding",
+      "title": "Guiding-Based Importance Sampling for Walk on Stars",
+      "identifier": "2410.18944v3",
+      "authors": [
+        "Tianyu Huang",
+        "Jingwang Ling",
+        "Shuang Zhao",
+        "Feng Xu"
+      ],
+      "pdf_url": "https://arxiv.org/pdf/2410.18944v3",
+      "sha256": "78459ff3dda92f02b121e0677f13bbb0a1e3771b51f405b5a9e3122f98a8f691",
+      "downloaded_on": "2026-10-12",
+      "extraction": "readable targeted text",
+      "local_matches": [
+        {
+          "identity": "verified from first page",
+          "sha256": "78459ff3dda92f02b121e0677f13bbb0a1e3771b51f405b5a9e3122f98a8f691",
+          "matches_download_bytes": true,
+          "filename": "Huang et al. - 2025 - Guiding-Based Importance Sampling for Walk on Stars.pdf"
+        }
+      ]
+    },
+    {
+      "key": "wods",
+      "title": "Walk on Decomposed Subdomains: A Hybrid Monte Carlo–Deterministic Solver for Elliptic PDEs",
+      "identifier": "10.1145/3811340",
+      "authors": [
+        "Clément Jambon",
+        "Mohammad Sina Nabizadeh",
+        "Mina Konaković Luković"
+      ],
+      "pdf_url": "https://clementjambon.github.io/wods/refs/wods.pdf",
+      "sha256": "e04d4c6564736b779ab7a3a1dfd407daba2cb1b9755397aede2edd7f2fe406a0",
+      "downloaded_on": "2026-10-12",
+      "extraction": "readable; WoDS required metadata removal and visual equation check",
+      "local_matches": [
+        {
+          "identity": "verified from first page",
+          "sha256": "e04d4c6564736b779ab7a3a1dfd407daba2cb1b9755397aede2edd7f2fe406a0",
+          "matches_download_bytes": true,
+          "filename": "Jambon, Nabizadeh, Luković - 2026 - Walk on Decomposed Subdomains A Hybrid Monte Carlo – Deterministic Solver for Elliptic PDEs.pdf"
+        }
+      ]
+    },
+    {
+      "key": "neural-shapes",
+      "title": "Learning to Solve PDEs on Neural Shape Representations",
+      "identifier": "2512.21311v2",
+      "authors": [
+        "Lilian Welschinger",
+        "Yilin Liu",
+        "Zican Wang",
+        "Niloy J. Mitra"
+      ],
+      "pdf_url": "https://arxiv.org/pdf/2512.21311v2",
+      "sha256": "1809440e24e8b9a80f66b9c0092daf9ea2216f2f805298fabe4e49b24e87e25b",
+      "downloaded_on": "2026-10-12",
+      "extraction": "readable targeted text",
+      "local_matches": [
+        {
+          "identity": "verified from first page",
+          "sha256": "1809440e24e8b9a80f66b9c0092daf9ea2216f2f805298fabe4e49b24e87e25b",
+          "matches_download_bytes": true,
+          "filename": "Mitra - 2026 - Learning to Solve PDEs on Neural Shape Representations Anonymous CVPR submission.pdf"
+        }
+      ]
+    },
+    {
+      "key": "divide-denoise",
+      "title": "Divide-and-Denoise: A Game-Theoretic Method for Fairly Composing Diffusion Models",
+      "identifier": "2606.14756v1",
+      "authors": [
+        "Abhi Gupta",
+        "Tatiana Barabanshchikova",
+        "Vikas Garg",
+        "Samuel Kaski",
+        "Tommi Jaakkola"
+      ],
+      "pdf_url": "https://arxiv.org/pdf/2606.14756v1",
+      "sha256": "a6a5329a6df546f344012857c8bb4bfafe924343af1875453db8e13c7dd681c3",
+      "downloaded_on": "2026-10-12",
+      "extraction": "readable targeted text",
+      "local_matches": []
+    },
+    {
+      "key": "composition",
+      "title": "Learnable composition for neural operators",
+      "identifier": "2609.03069v1",
+      "authors": [
+        "Zituo Chen",
+        "Baiming Zhang",
+        "Sili Deng"
+      ],
+      "pdf_url": "https://arxiv.org/pdf/2609.03069v1",
+      "sha256": "3b0cc62c0ec68170811bc8dbffeabc1e99467c0b8ce057f616bfc1ed7d625768",
+      "downloaded_on": "2026-10-12",
+      "extraction": "readable targeted text",
+      "local_matches": []
+    }
+  ]
+}

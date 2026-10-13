@@ -1,0 +1,12 @@
+{
+  "seed": 20261012,
+  "walks": 4096,
+  "epsilon_shell": 1e-05,
+  "step_cap": 10000,
+  "cap_hits": 0,
+  "exact_value": 0.09999999999999998,
+  "mc_estimate": 0.09691872791561978,
+  "mc_standard_error": 0.011011849366592864,
+  "mean_steps": 15.915283203125,
+  "scope": "original harmonic-disk illustration; finite epsilon-shell; not a benchmark reproduction"
+}

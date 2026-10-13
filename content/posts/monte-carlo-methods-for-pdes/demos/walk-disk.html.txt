@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Try Walk on Spheres in a disk</title>
+<style>
+*{box-sizing:border-box}body{margin:0;padding:20px;color:#183345;background:#fff;font:16px/1.5 system-ui,sans-serif}h2{font-size:21px;margin:0 0 8px}p{margin:8px 0}label{display:block;font-weight:600}input[type=range]{width:100%;accent-color:#185d83}select,button{font:inherit;padding:9px 12px;border:1px solid #8294a1;border-radius:5px;background:#fff;color:#183345}button{background:#185d83;color:white;cursor:pointer}button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid #b65d30;outline-offset:2px}.controls{display:flex;gap:12px;align-items:end;flex-wrap:wrap}.controls>div{flex:1;min-width:120px}canvas{display:block;width:100%;height:auto;max-height:330px;object-fit:contain;margin:8px auto}.scores{display:grid;grid-template-columns:1fr 1fr;gap:8px}.scores div{background:#edf3f7;padding:10px;border-radius:4px}.scores strong{display:block;font-size:21px}.note{font-size:13px;color:#485b68}output{font-weight:600}#status{min-height:1.5em}@media(max-width:420px){body{padding:12px}.scores strong{font-size:18px}h2{font-size:19px}}
+</style></head><body>
+<h2>Try the walk: same PDE, different query</h2>
+<p>On the unit disk, boundary data cos(2θ) gives the exact field u(x,y) = x² − y². Move the query along y = 0 and average independent walks.</p>
+<label for="query">Query x: <output id="queryValue">0.35</output></label>
+<input id="query" type="range" min="-0.85" max="0.85" step="0.05" value="0.35">
+<div class="controls"><div><label for="count">Walks</label><select id="count"><option value="1">1</option><option value="64" selected>64</option><option value="256">256</option><option value="1024">1024</option></select></div><button id="run" type="button">Run walks</button><button id="reset" type="button">Reset</button></div>
+<canvas id="plot" width="700" height="410" role="img" aria-label="Unit disk with a query point, inscribed disks, and sampled paths"></canvas>
+<div class="scores" aria-live="polite"><div>Exact value<strong id="exact">—</strong></div><div>Monte Carlo estimate<strong id="estimate">—</strong></div><div>Estimated standard error<strong id="se">—</strong></div><div>Mean jumps per walk<strong id="steps">—</strong></div></div>
+<p id="status" class="note" role="status"></p>
+<p class="note">First 6 paths shown; circles show the first path's initial jumps. Stopping shell ε = 10⁻⁵ adds approximation error. Standard error measures sampling variability only. This is an original disk illustration, not a WoDS benchmark.</p>
+<noscript>This demo requires JavaScript. The static figure in the article explains the same method.</noscript>
+<script>
+'use strict';
+const $=id=>document.getElementById(id),canvas=$('plot'),ctx=canvas.getContext('2d');let seed=20261012;
+function randomGenerator(s){return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function run(){
+ const x=Number($('query').value),n=Number($('count').value),usedSeed=seed++,rng=randomGenerator(usedSeed),paths=[];let sum=0,sum2=0,jumps=0;
+ for(let j=0;j<n;j++){let px=x,py=0,k=0,path=[[px,py]];
+  while(1-Math.hypot(px,py)>1e-5 && k<10000){const r=1-Math.hypot(px,py),a=2*Math.PI*rng();px+=r*Math.cos(a);py+=r*Math.sin(a);path.push([px,py]);k++;}
+  if(k===10000){$('status').textContent='Walk cap reached; estimate withheld. Reset and retry.';return;}
+  const value=Math.cos(2*Math.atan2(py,px));sum+=value;sum2+=value*value;jumps+=k;if(j<6)paths.push(path);
+ }
+ const mean=sum/n,se=n>1?Math.sqrt(Math.max(0,(sum2-n*mean*mean)/(n-1))/n):null;
+ $('exact').textContent=(x*x).toFixed(4);$('estimate').textContent=mean.toFixed(4);$('se').textContent=se===null?'Needs ≥2 walks':se.toFixed(4);$('steps').textContent=(jumps/n).toFixed(1);$('status').textContent=`${n} independent walks · seed ${usedSeed} · no truncated walks`;
+ ctx.clearRect(0,0,700,410);const scale=175,cx=350,cy=205;
+ function point(p){return[cx+scale*p[0],cy-scale*p[1]];}
+ for(let k=0;k<180;k++){const a=k*2*Math.PI/180,v=Math.cos(2*a);ctx.strokeStyle=v>0?`rgb(${180+60*v},${130-60*v},${105-40*v})`:`rgb(${130+80*v},${160+30*v},${185+10*v})`;ctx.lineWidth=7;ctx.beginPath();ctx.arc(cx,cy,scale,-a-2*Math.PI/180,-a);ctx.stroke();}
+ for(const p of paths[0].slice(0,7)){ctx.strokeStyle='#185d8338';ctx.lineWidth=1;ctx.beginPath();ctx.arc(...point(p),scale*(1-Math.hypot(...p)),0,2*Math.PI);ctx.stroke();}
+ paths.forEach((path,j)=>{ctx.strokeStyle=j===0?'#185d83':'#185d834a';ctx.lineWidth=j===0?2:1;ctx.beginPath();path.forEach((p,i)=>{const [a,b]=point(p);i?ctx.lineTo(a,b):ctx.moveTo(a,b);});ctx.stroke();});
+ ctx.fillStyle='#b65d30';ctx.beginPath();ctx.arc(...point([x,0]),5,0,2*Math.PI);ctx.fill();
+ canvas.setAttribute('aria-label',`${n} walks from (${x},0), exact value ${(x*x).toFixed(4)}, estimate ${mean.toFixed(4)}.`);
+}
+$('query').addEventListener('input',()=>{$('queryValue').textContent=Number($('query').value).toFixed(2);});
+$('run').addEventListener('click',run);$('reset').addEventListener('click',()=>{seed=20261012;$('query').value=.35;$('queryValue').textContent='0.35';$('count').value='64';run();});run();
+</script></body></html>

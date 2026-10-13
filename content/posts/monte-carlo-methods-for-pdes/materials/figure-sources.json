@@ -1,0 +1,46 @@
+{
+  "figures": [
+    {
+      "file": "figures/interface-response.png",
+      "generator": "materials/interface_example.py",
+      "type": "original analytic illustration",
+      "note": "Two-material conduction; no paper benchmark"
+    },
+    {
+      "file": "figures/walk-on-spheres.png",
+      "generator": "materials/visuals.py",
+      "type": "original numerical illustration",
+      "note": "Harmonic disk, fixed seed, 4096 walks, finite epsilon shell"
+    },
+    {
+      "file": "figures/response-kernel.png",
+      "generator": "materials/visuals.py",
+      "type": "original analytic visualization",
+      "note": "Disk Poisson kernel; panel matrix is normalized sampled density"
+    },
+    {
+      "file": "figures/composition-paths.png",
+      "generator": "materials/visuals.py",
+      "type": "original explanatory schematic",
+      "note": "WoDS \u00a7\u00a73\u20135 and LatentDDM \u00a73; distinct methods/tasks"
+    },
+    {
+      "file": "figures/cache-architecture.png",
+      "generator": "materials/visuals.py",
+      "type": "proposed architecture",
+      "note": "Static context K/V and changing queries; no implementation claim"
+    },
+    {
+      "file": "figures/cache-invalidation.png",
+      "generator": "materials/visuals.py",
+      "type": "dependency illustration",
+      "note": "Local versus globally contextualized static encoders; not measured performance"
+    }
+  ],
+  "demo": {
+    "file": "demos/walk-disk.html.txt",
+    "type": "original interactive illustration",
+    "source": "classical disk harmonic problem",
+    "scope": "finite-shell Walk on Spheres; not a WoDS implementation"
+  }
+}

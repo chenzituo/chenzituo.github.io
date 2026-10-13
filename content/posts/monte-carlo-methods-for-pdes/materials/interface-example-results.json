@@ -1,0 +1,24 @@
+{
+  "problem": "-(k u_x)_x = 0; u(0)=0; u(1)=1",
+  "conductivities": [
+    1.0,
+    4.0
+  ],
+  "interface_x": 0.5,
+  "resistances": [
+    0.5,
+    0.125
+  ],
+  "compatible_interface": 0.8,
+  "rightward_fluxes": [
+    -1.6,
+    -1.5999999999999996
+  ],
+  "naive_interface": 0.5,
+  "naive_rightward_fluxes": [
+    -1.0,
+    -4.0
+  ],
+  "max_flux_mismatch": 4.440892098500626e-16,
+  "scope": "analytic illustration, no Monte Carlo or model training"
+}

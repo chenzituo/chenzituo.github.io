@@ -1,0 +1,9 @@
+{{- $src := .Get "src" -}}
+{{- $title := .Get "title" -}}
+{{- with .Page.Resources.Get $src -}}
+{{- $target := printf "%s%s" $.Page.RelPermalink (strings.TrimSuffix ".txt" $src) -}}
+{{- $demo := resources.FromString $target .Content -}}
+<iframe src="{{ $demo.RelPermalink }}" title="{{ $title }}" loading="lazy" sandbox="allow-scripts" style="width:100%;height:780px;border:1px solid #94a3b8;border-radius:8px;background:white;"></iframe>
+{{- else -}}
+{{- errorf "Missing local demo %q in %s" $src .Page.File.Path -}}
+{{- end -}}
