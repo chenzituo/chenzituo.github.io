@@ -16,6 +16,8 @@ Work relative to the blog repository root. This skill is local to the blog; it d
 
 ## Build the argument and the evidence together
 
+Organize a synthesis around one reader question and a running example. Let each section resolve the question needed by the next; assign papers roles in that argument instead of giving each paper a disconnected mini-summary. Before adding an outlook, write the missing bridge explicitly: what object, operation, or dependency carries over, and what does not?
+
 Start with the reader's concrete problem, then develop the mechanism and its implications. Name what is learned, what is solved, what is represented, and what is assumed. Distinguish a paper's demonstrated scope from the author's research extrapolation.
 
 For supplied papers, verify identity and requested versions. Record inspected pages/sections, claims, extraction gaps, and unresolved comparisons in `materials/reading-ledger.md`; record exact URLs and useful provenance in `sources.json`. Use the available research-paper-reading skill for substantial paper analysis. Keep quotes short, respect source-specific summarization limits, and write original derivations/examples where useful. Do not use abstract-level reading to imply a full theorem or benchmark audit.
@@ -26,7 +28,7 @@ The main text should explain why each equation matters. Define symbols before us
 
 The author's preference is visually ample technical posts. Distribute figures where they answer the next question in the argument, rather than collecting decoration at the end. Useful roles include mechanism, worked example, controlled comparison, architecture, and failure mode. Choose the number from the argument, not a quota.
 
-Use [visual-and-interactive.md](references/visual-and-interactive.md) when creating figures or demos. Prefer original diagrams and reproducible scientific plots; cite and identify any adapted or reused figure. Keep plot generators and numerical results in materials. Store a `figure-sources.json` mapping each figure to its generator, source/derivation, and evidence status.
+Use [visual-and-interactive.md](references/visual-and-interactive.md) when creating figures or demos. For explanations of published methods, prefer carefully selected figures from the articles over newly drawn substitutes. Read the figure and caption in context; retain attribution and record the reuse basis. Reserve original diagrams and reproducible plots for the author's new synthesis, derivation, or experiment. Study the source figures to improve the design of those original visuals. Keep plot generators and numerical results in materials. Store a `figure-sources.json` mapping each figure to its generator, source/derivation, and evidence status.
 
 ## Finish the requested stage
 

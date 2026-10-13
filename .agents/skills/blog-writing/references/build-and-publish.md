@@ -15,4 +15,6 @@ For an authorized publication:
 - Do not include downloaded PDFs or private research receipts in public assets without a reason and authorization. Leaf-bundle Markdown material files are not automatically published as standalone HTML pages; use a verified repository link or an actual public artifact when appropriate.
 - End temporary servers and watch processes; preserve a requested live preview only when its continuation is intentional.
 
+Before publishing a synthesis, read only the introduction, section openings, figure captions and conclusion in sequence. They should expose one coherent argument. For a proposed acceleration such as caching, name the workload, the reused object, its validity dependencies, the remaining computation and the strongest reusable numerical baseline. A diagram and complexity formula alone do not supply that connection.
+
 Report what changed, what was checked, and any unresolved limitation. Never claim tests, performance measurements or publication that did not occur.

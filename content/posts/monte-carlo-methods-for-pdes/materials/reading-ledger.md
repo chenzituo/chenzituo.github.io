@@ -45,10 +45,18 @@ The supplied Divide-and-Denoise ID is intentional: the user confirmed its role a
 
 The existing post URL is retained. Initial development was a local draft; the subsequent publication request on 2026-10-12 changes `index.md` to `draft: false`. The article remains a developing research note. All six figures are original, with generators/results saved here. Existing unrelated working-tree changes are untouched.
 
-## Visual development
+## Initial visual development
 
 Six original figures plus an interactive disk example develop the argument. The 4,096-walk disk run used seed 20261012, epsilon 1e-5 and no cap hits; estimate 0.09692, exact 0.10000, SE 0.01101. These are pedagogical checks, not source-paper reproductions. Architecture and cache-invalidation figures are proposals/illustrations. Source map: `figure-sources.json`.
 
 Validation: Hugo draft/production builds passed (existing PaperMod deprecation warnings only); 62 local HTML targets/fragments checked; all six figures visually inspected. Browser review exercised query 0.8 with 1,024 walks (estimate 0.6252, exact 0.6400), then verified deterministic Reset to the initial query/seed. These demo checks establish control behavior, not statistical coverage or solver convergence. Desktop article math and sandboxed iframe rendered. Mobile rendering remains a follow-up check.
 
 Publication check (2026-10-12): the exact staged snapshot builds successfully with Hugo 0.167.0 in production mode, including the article and demo; 62 local targets/fragments pass. Only existing PaperMod deprecation warnings remain.
+
+## Source-first and argument revision (2026-10-12)
+
+User feedback identified excessive self-created diagrams, confusing structure and a weak connection to KV caching. The article now follows one repeated-boundary-value workload through response representation, compatible composition and cacheable model design. Six source excerpts replace/supplement the initial diagrams; only the original conduction example and revised proposed architecture remain as static original figures. The disk demo remains. Figure pages inspected: Guiding p.1; WoDS pp.3, 5, 8; Neural Shapes p.4; LatentDDM p.4. Original captions and surrounding text were read for interpretation. See `visual-study.md` and the expanded figure manifest for extraction and attribution.
+
+New reasoning: resistance-weighted interface value for arbitrary endpoint conditions; physical response reuse versus neural feature reuse; static-context cross-attention with dynamic queries; prediction-dependent LatentDDM tokens; nonlinear state dependence; workload break-even inequality. These are analytic explanations and architectural hypotheses, not additional paper results. Encoder–decoder cross-attention terminology was checked against https://huggingface.co/docs/transformers/model_doc/encoder-decoder on 2026-10-12. No source benchmark or implementation was newly audited.
+
+Revision validation: isolated production-mode Hugo build passed; 70 local asset/link targets passed. All six source crops and the new original architecture were visually inspected. Desktop and 390px mobile browser review checked source attribution, equations, and image expansion links. A bare less-than symbol in the break-even equation was caught in rendering and replaced with `\lt`; the final browser check found no raw display delimiters or MathJax error nodes. Existing demo remains functional in the sandboxed iframe; its algorithm was unchanged.

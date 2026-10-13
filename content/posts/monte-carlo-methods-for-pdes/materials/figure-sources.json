@@ -4,37 +4,175 @@
       "file": "figures/interface-response.png",
       "generator": "materials/interface_example.py",
       "type": "original analytic illustration",
-      "note": "Two-material conduction; no paper benchmark"
+      "note": "Two-material conduction; no paper benchmark",
+      "displayed_in_article": true
     },
     {
       "file": "figures/walk-on-spheres.png",
       "generator": "materials/visuals.py",
       "type": "original numerical illustration",
-      "note": "Harmonic disk, fixed seed, 4096 walks, finite epsilon shell"
+      "note": "Harmonic disk, fixed seed, 4096 walks, finite epsilon shell",
+      "displayed_in_article": false
     },
     {
       "file": "figures/response-kernel.png",
       "generator": "materials/visuals.py",
       "type": "original analytic visualization",
-      "note": "Disk Poisson kernel; panel matrix is normalized sampled density"
+      "note": "Disk Poisson kernel; panel matrix is normalized sampled density",
+      "displayed_in_article": false
     },
     {
       "file": "figures/composition-paths.png",
       "generator": "materials/visuals.py",
       "type": "original explanatory schematic",
-      "note": "WoDS \u00a7\u00a73\u20135 and LatentDDM \u00a73; distinct methods/tasks"
+      "note": "WoDS §§3–5 and LatentDDM §3; distinct methods/tasks",
+      "displayed_in_article": false
     },
     {
       "file": "figures/cache-architecture.png",
       "generator": "materials/visuals.py",
       "type": "proposed architecture",
-      "note": "Static context K/V and changing queries; no implementation claim"
+      "note": "Static context K/V and changing queries; no implementation claim; superseded by revised cache-architecture-v2.svg",
+      "displayed_in_article": false
     },
     {
       "file": "figures/cache-invalidation.png",
       "generator": "materials/visuals.py",
       "type": "dependency illustration",
-      "note": "Local versus globally contextualized static encoders; not measured performance"
+      "note": "Local versus globally contextualized static encoders; not measured performance",
+      "displayed_in_article": false
+    },
+    {
+      "file": "figures/guiding-overview.png",
+      "type": "source figure excerpt",
+      "source_key": "guiding",
+      "source_url": "https://arxiv.org/pdf/2410.18944v3",
+      "authors": "Huang, Ling, Zhao, Xu",
+      "pdf_page": 1,
+      "figure": 1,
+      "crop_at_page_height_1400": [
+        85,
+        296,
+        995,
+        481
+      ],
+      "render_page_height": 4200,
+      "modifications": "Figure-only crop; surrounding prose and original caption omitted; no changes within figure.",
+      "rights_note": "Copyright authors; arXiv non-exclusive distribution license is not a reuse license. Single figure excerpt for focused scholarly commentary.",
+      "displayed_in_article": true,
+      "generator": "materials/extract_source_figures.py"
+    },
+    {
+      "file": "figures/wods-decomposition.png",
+      "type": "source figure excerpt",
+      "source_key": "wods",
+      "source_url": "https://clementjambon.github.io/wods/refs/wods.pdf",
+      "authors": "Jambon, Nabizadeh, Konaković Luković",
+      "pdf_page": 5,
+      "figure": 5,
+      "crop_at_page_height_1400": [
+        86,
+        134,
+        521,
+        343
+      ],
+      "render_page_height": 4200,
+      "modifications": "Figure-only crop; surrounding prose and original caption omitted; no changes within figure.",
+      "rights_note": "CC BY 4.0",
+      "displayed_in_article": true,
+      "generator": "materials/extract_source_figures.py"
+    },
+    {
+      "file": "figures/wods-response.png",
+      "type": "source figure excerpt",
+      "source_key": "wods",
+      "source_url": "https://clementjambon.github.io/wods/refs/wods.pdf",
+      "authors": "Jambon, Nabizadeh, Konaković Luković",
+      "pdf_page": 8,
+      "figure": 8,
+      "crop_at_page_height_1400": [
+        88,
+        134,
+        521,
+        329
+      ],
+      "render_page_height": 4200,
+      "modifications": "Figure-only crop; surrounding prose and original caption omitted; no changes within figure.",
+      "rights_note": "CC BY 4.0",
+      "displayed_in_article": true,
+      "generator": "materials/extract_source_figures.py"
+    },
+    {
+      "file": "figures/wods-geometry-edits.png",
+      "type": "source figure excerpt",
+      "source_key": "wods",
+      "source_url": "https://clementjambon.github.io/wods/refs/wods.pdf",
+      "authors": "Jambon, Nabizadeh, Konaković Luković",
+      "pdf_page": 3,
+      "figure": 3,
+      "crop_at_page_height_1400": [
+        88,
+        132,
+        997,
+        370
+      ],
+      "render_page_height": 4200,
+      "modifications": "Figure-only crop; surrounding prose and original caption omitted; no changes within figure.",
+      "rights_note": "CC BY 4.0",
+      "displayed_in_article": true,
+      "generator": "materials/extract_source_figures.py"
+    },
+    {
+      "file": "figures/neural-shapes-pipeline.png",
+      "type": "source figure excerpt",
+      "source_key": "neural-shapes",
+      "source_url": "https://arxiv.org/pdf/2512.21311v2",
+      "authors": "Welschinger, Liu, Wang, Mitra",
+      "pdf_page": 4,
+      "figure": 2,
+      "crop_at_page_height_1400": [
+        97,
+        120,
+        983,
+        302
+      ],
+      "render_page_height": 4200,
+      "modifications": "Figure-only crop; surrounding prose and original caption omitted; no changes within figure.",
+      "rights_note": "arXiv non-exclusive distribution license is not a reuse license. Single figure excerpt for focused scholarly commentary.",
+      "displayed_in_article": true,
+      "generator": "materials/extract_source_figures.py"
+    },
+    {
+      "file": "figures/latentddm-overview.png",
+      "type": "source figure excerpt",
+      "source_key": "composition",
+      "source_url": "https://arxiv.org/pdf/2609.03069v1",
+      "authors": "Chen, Zhang, Deng",
+      "pdf_page": 4,
+      "figure": 1,
+      "crop_at_page_height_1400": [
+        251,
+        128,
+        846,
+        524
+      ],
+      "render_page_height": 4200,
+      "modifications": "Figure-only crop; surrounding prose and original caption omitted; no changes within figure.",
+      "rights_note": "CC BY 4.0",
+      "displayed_in_article": true,
+      "generator": "materials/extract_source_figures.py"
+    },
+    {
+      "file": "figures/cache-architecture-v2.svg",
+      "type": "original proposed architecture",
+      "generator": "materials/cache_architecture.py",
+      "displayed_in_article": true,
+      "design_references": [
+        "WoDS Fig. 8: draw the represented operator",
+        "Neural shapes Fig. 2: geometry-to-local-patch-to-update sequence",
+        "LatentDDM Fig. 1: distinguish local operators from composition"
+      ],
+      "note": "Static context and dynamic state separated; no measured cache result; independently drawn, not adapted source artwork."
     }
   ],
   "demo": {
