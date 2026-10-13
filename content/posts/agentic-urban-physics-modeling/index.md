@@ -1,8 +1,7 @@
 ---
 title: "Agentic urban physics modeling"
 date: 2026-09-30
-weight: 11
-draft: false
+draft: true
 tags: [planned]
 summary: "Coming soon — a note I plan to write."
 showtoc: false

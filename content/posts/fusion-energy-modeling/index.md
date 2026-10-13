@@ -1,8 +1,7 @@
 ---
 title: "Modeling fusion energy: plasma physics, neural networks, and AI"
 date: 2026-09-30
-weight: 13
-draft: false
+draft: true
 tags: [planned]
 summary: "Coming soon — how physical models, MHD, neural networks, and AI support fusion design and control."
 showtoc: false

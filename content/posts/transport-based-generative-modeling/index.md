@@ -1,8 +1,7 @@
 ---
 title: "Transport-based generative modeling"
 date: 2026-09-29
-weight: 8
-draft: false
+draft: true
 tags: [planned]
 summary: "Coming soon — a note I plan to write."
 showtoc: false

@@ -10,6 +10,7 @@ Work relative to the blog repository root. This skill is local to the blog; it d
 ## Local conventions
 
 - Hugo with PaperMod; navigation in `hugo.yaml`. Preserve established URLs. Existing placeholders are usually the starting point for a new topic.
+- Posts appear newest first by publication date. Do not use manual post weights; keep planned “Coming soon” placeholders as drafts. A substantive developing note may remain public even with `completed: false`.
 - Articles are leaf bundles: `content/posts/<slug>/index.md`, `figures/`, and `materials/`. Math uses `math: true`, `\(...\)` inline and `$$...$$` displays. `UseHugoToc: true` works with numbered headings.
 - `content/reads/` holds summaries of others' posts: source title, authors, original URL/date, a concise attributed summary, then the author's own takeaway. Reads has its own listing/RSS; `mainSections: [posts]` keeps it separate from Posts/Archive while search includes it.
 - Functional Learning is an example of sustained technical exposition with reproducible toys. Walk on Anything demonstrates a developing visual argument and an isolated interactive demo. Use these as patterns, not text templates or mandatory lengths.

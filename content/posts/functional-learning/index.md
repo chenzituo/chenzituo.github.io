@@ -1,7 +1,6 @@
 ---
 title: "How and why we redefine latent representations for PDE solutions as functional learning?"
 date: 2026-10-01T10:47:44-04:00
-weight: -1
 draft: false
 tags: [functional-learning, pdes, neural-networks, flow-matching]
 summary: "Why PDE learning needs a functional view of latent codes, and how that view connects solvers, physical constraints, uncertainty, and adaptive transport."

@@ -1,8 +1,7 @@
 ---
 title: "Data assimilation basics and beyond"
 date: 2026-09-29
-weight: 2
-draft: false
+draft: true
 tags: [planned]
 summary: "Coming soon — a note I plan to write."
 showtoc: false
