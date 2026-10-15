@@ -303,5 +303,97 @@
     "created": "2026-10-11",
     "type": "original analytic and numerical illustration",
     "description": "Fixed smooth-mixture endpoint laws with independent, quadratic-OT, and bounded-kernel-OT component-label pairing; analytic marginal velocities, no neural training."
+  },
+  {
+    "image": "../figures/rkhs-field-readouts.png",
+    "source_type": "author-supplied research note; intact figure-panel excerpt",
+    "source_pdf": "FGD_architecture_and_field_denoising.pdf",
+    "source_title": "FGD: a field model with denoising dynamics / Architecture & worked trajectories",
+    "source_date": "2026-10-15",
+    "source_sha256": "655a33b05c462e5a836b3cc0b5d612baeb745c714bd4b32c4452c680f407d39c",
+    "source_url": null,
+    "figure": null,
+    "pdf_page": 3,
+    "crop_rectangle_review_pixels": [
+      65,
+      320,
+      1290,
+      680
+    ],
+    "crop_coordinate_system": "left, top, right, bottom in the 1300-pixel-wide page review; doubled for 2600-pixel extraction",
+    "creation": "extract-field-denoising-figures.py; Poppler pdftoppm rasterization and rectangular excerpt",
+    "license_url": null,
+    "reuse_basis": "Author-provided material used for the requested blog explanation; no external license asserted; full PDF not redistributed.",
+    "changes": "Surrounding page prose and footer omitted. All selected panels, labels and color scales preserved. New blog caption states scope and source.",
+    "evidence_status": "Reported trajectories and checks in supplied note; not independently rerun or benchmarked in this revision."
+  },
+  {
+    "image": "../figures/rkhs-dynabench-denoising.png",
+    "source_type": "author-supplied research note; intact figure-panel excerpt",
+    "source_pdf": "FGD_architecture_and_field_denoising.pdf",
+    "source_title": "FGD: a field model with denoising dynamics / Architecture & worked trajectories",
+    "source_date": "2026-10-15",
+    "source_sha256": "655a33b05c462e5a836b3cc0b5d612baeb745c714bd4b32c4452c680f407d39c",
+    "source_url": null,
+    "figure": null,
+    "pdf_page": 4,
+    "crop_rectangle_review_pixels": [
+      55,
+      145,
+      1245,
+      675
+    ],
+    "crop_coordinate_system": "left, top, right, bottom in the 1300-pixel-wide page review; doubled for 2600-pixel extraction",
+    "creation": "extract-field-denoising-figures.py; Poppler pdftoppm rasterization and rectangular excerpt",
+    "license_url": null,
+    "reuse_basis": "Author-provided material used for the requested blog explanation; no external license asserted; full PDF not redistributed.",
+    "changes": "Surrounding page prose and footer omitted. All selected panels, labels and color scales preserved. New blog caption states scope and source.",
+    "evidence_status": "Reported trajectories and checks in supplied note; not independently rerun or benchmarked in this revision."
+  },
+  {
+    "image": "../figures/rkhs-ocean-observations.png",
+    "source_type": "author-supplied research note; intact figure-panel excerpt",
+    "source_pdf": "FGD_architecture_and_field_denoising.pdf",
+    "source_title": "FGD: a field model with denoising dynamics / Architecture & worked trajectories",
+    "source_date": "2026-10-15",
+    "source_sha256": "655a33b05c462e5a836b3cc0b5d612baeb745c714bd4b32c4452c680f407d39c",
+    "source_url": null,
+    "figure": null,
+    "pdf_page": 7,
+    "crop_rectangle_review_pixels": [
+      65,
+      95,
+      1300,
+      745
+    ],
+    "crop_coordinate_system": "left, top, right, bottom in the 1300-pixel-wide page review; doubled for 2600-pixel extraction",
+    "creation": "extract-field-denoising-figures.py; Poppler pdftoppm rasterization and rectangular excerpt",
+    "license_url": null,
+    "reuse_basis": "Author-provided material used for the requested blog explanation; no external license asserted; full PDF not redistributed.",
+    "changes": "Surrounding page prose and footer omitted. All selected panels, labels and color scales preserved. New blog caption states scope and source.",
+    "evidence_status": "Reported trajectories and checks in supplied note; not independently rerun or benchmarked in this revision."
+  },
+  {
+    "image": "../figures/rkhs-ocean-denoising.png",
+    "source_type": "author-supplied research note; intact figure-panel excerpt",
+    "source_pdf": "FGD_architecture_and_field_denoising.pdf",
+    "source_title": "FGD: a field model with denoising dynamics / Architecture & worked trajectories",
+    "source_date": "2026-10-15",
+    "source_sha256": "655a33b05c462e5a836b3cc0b5d612baeb745c714bd4b32c4452c680f407d39c",
+    "source_url": null,
+    "figure": null,
+    "pdf_page": 8,
+    "crop_rectangle_review_pixels": [
+      100,
+      125,
+      1290,
+      790
+    ],
+    "crop_coordinate_system": "left, top, right, bottom in the 1300-pixel-wide page review; doubled for 2600-pixel extraction",
+    "creation": "extract-field-denoising-figures.py; Poppler pdftoppm rasterization and rectangular excerpt",
+    "license_url": null,
+    "reuse_basis": "Author-provided material used for the requested blog explanation; no external license asserted; full PDF not redistributed.",
+    "changes": "Surrounding page prose and footer omitted. All selected panels, labels and color scales preserved. New blog caption states scope and source.",
+    "evidence_status": "Reported trajectories and checks in supplied note; not independently rerun or benchmarked in this revision."
   }
 ]

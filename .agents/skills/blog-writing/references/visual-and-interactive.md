@@ -21,6 +21,8 @@ Lessons from the Walk on Anything revision:
 - LatentDDM Fig. 1 aligns comparable inputs/outputs and makes repeated local-operator calls visible. Use aligned comparison paths when the difference in computation is the point.
 - WoDS Fig. 3 changes geometry within the same scene. Hold the view fixed when explaining the effect of an edit; separate local recomputation from its global physical consequences.
 
+From the field-denoising architecture note: hold the physical date fixed when rows show sampler progress, and align columns with the actual operations within one iteration. State whether a comparison is within one run or between independently evaluated methods; a correction-stage image is not an ablation.
+
 For original figures, use these explanatory choices, not copied artwork or unexplained borrowed notation. White space, restrained semantic colors, short direct labels and concrete field/mesh/operator glyphs often work better than decorative cards. Inspect the result at article width. A physically themed illustration must not look like measured data unless it is.
 
 ## Original figures and interactive examples
