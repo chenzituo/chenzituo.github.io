@@ -1,7 +1,7 @@
 <div class="social-icons" {{ with .align }}align="{{ . }}"{{ end }}>
   {{- range site.Params.socialIcons }}
   {{- $label := .description | default .title | default .name }}
-  <a class="social-link" href="{{ trim .url " " | safeURL }}" {{ if not .internal }}target="_blank" rel="noopener noreferrer me"{{ end }} aria-label="{{ $label }}">
+  <a class="social-link" href="{{ trim .url " " | safeURL }}" {{ if and (not .internal) (not (hasPrefix .url "mailto:")) }}target="_blank" rel="noopener noreferrer me"{{ end }} aria-label="{{ $label }}">
     {{- if eq .name "huggingface" }}
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <path d="M4.5 12a8 8 0 1 1 15 0M9 13a4 4 0 0 0 6 0" />

@@ -34,6 +34,10 @@ params:
     Title: "Welcome to Zituo’s Notes"
     Content: "A place for learning notes, ideas, and explanations worth returning to."
   socialIcons:
+    - name: email
+      title: Email
+      description: Email — zituo@mit.edu
+      url: mailto:zituo@mit.edu
     - name: rss
       description: RSS — Subscribe to new posts
       url: index.xml

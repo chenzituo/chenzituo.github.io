@@ -5,6 +5,8 @@ showtoc: false
 ---
 I'm Zituo Chen, a PhD student in MIT MechE working on generative physical modeling and reacting flows. Here I share learning notes and ideas.
 
+Contact: [zituo@mit.edu](mailto:zituo@mit.edu).
+
 ## Education
 
 - **Massachusetts Institute of Technology** — PhD, MechE · Jan 2026–present.
