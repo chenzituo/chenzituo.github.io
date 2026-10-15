@@ -25,7 +25,7 @@ For supplied papers, verify identity and requested versions. Record inspected pa
 
 When an author states a research objective, organize the outlook around that modeling problem; introduce infrastructure as a consequence of the proposed computation. For sequential PDE models, distinguish physical time, solver iterations, token order, immutable history and revisable current state. Do not replace a sequential-modeling objective with static-context caching alone.
 
-The main text should explain why each equation matters. Define symbols before use. Separate distinct times (physical, diffusion, optimization), norms, and conditional distributions. A theorem's assumptions, a model's expressivity and its measured performance are different evidence levels.
+The main text should explain why each equation matters. Define symbols before use. Separate distinct times (physical, diffusion, optimization), network-layer depth, norms, and conditional distributions. For operator networks, name whether an intermediate state is a physical field or a feature function; do not imply that discrete layers advance physical time or define a continuous flow without a separate construction. A theorem's assumptions, a model's expressivity and its measured performance are different evidence levels.
 
 ## Visual exposition
 

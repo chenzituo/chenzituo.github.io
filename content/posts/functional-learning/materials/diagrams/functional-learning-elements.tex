@@ -7,7 +7,7 @@
 \definecolor{line}{HTML}{798899}
 \definecolor{panel}{HTML}{F4F6F8}
 \definecolor{descent}{HTML}{EEF3FA}
-\definecolor{physical}{HTML}{EEF5F0}
+\definecolor{operator}{HTML}{EEF5F0}
 \definecolor{transport}{HTML}{FCF3EA}
 \begin{document}
 \pagecolor{white}
@@ -25,16 +25,16 @@
     Operations \(\mathcal O_hu,\ \mathcal A_a(u),\ Q(u)\)\\[7pt]
     Geometry \(H\) and target \(u^\star,\ \mathcal S,\ \mu\)
   };
-  \node[heading] at (0,-2.45) {Choose the intended motion};
+  \node[heading] at (0,-2.45) {Choose the functional update};
   \node[motion, fill=descent] (fgd) at (-5,-4.4) {
     \textbf{FGD}\\[7pt]
     Optimization time \(s\)\\[7pt]
     \(\displaystyle \partial_su=-\nabla_H\mathcal L(u)\)
   };
-  \node[motion, fill=physical] (pde) at (0,-4.4) {
-    \textbf{Evolution PDE}\\[7pt]
-    Physical time \(t\)\\[7pt]
-    \(\displaystyle \partial_tu=\mathcal F_a(u)\)
+  \node[motion, fill=operator] (fol) at (0,-4.4) {
+    \textbf{FOL}\\[7pt]
+    Network layers \(\ell\)\\[7pt]
+    \(v^{\ell+1}=\mathcal T_\ell(v^\ell;a)\)
   };
   \node[motion, fill=transport] (ffm) at (5,-4.4) {
     \textbf{FFM}\\[7pt]
@@ -43,17 +43,18 @@
   };
   \draw[arrow] (problem.south) -- (0,-1.98);
   \node[box, anchor=north, fill=panel, text width=13.8cm, minimum height=4.05cm] (numerical) at (0,-6.8) {
-    {\Large\bfseries Realize the motion in coordinates}\\[10pt]
-    \(z_m\in\mathbb R^{d_m} \ \xrightarrow{\quad D_m\quad}\ u\)\\[9pt]
-    \(\displaystyle D_m'(z_m)\dot z_m\ \approx\ V_r(D_m(z_m);a)\)\\[9pt]
+    {\Large\bfseries Realize the updates in coordinates}\\[10pt]
+    \(z_m\in\mathbb R^{d_m} \ \xrightarrow{\quad D_m\quad}\ w\quad\text{(field or feature function)}\)\\[9pt]
+    FOL: compose discretized functional layers\\[7pt]
+    FGD / FFM: integrate functional velocities\\[9pt]
     Refinement: \(z_{m'}=P_{m\to m'}z_m,\quad d_{m'}>d_m\)\\[9pt]
-    Preserve the field: \(D_{m'}(P_{m\to m'}z_m)=D_m(z_m)\)\\[9pt]
-    Representation, quadrature, and integration
+    Preserve the function: \(D_{m'}(P_{m\to m'}z_m)=D_m(z_m)\)\\[9pt]
+    Representation, quadrature, and numerical updates
   };
   \coordinate (join) at (0,-6.04);
   \draw[draw=line, line width=.8pt] (fgd.south) |- (join);
   \draw[draw=line, line width=.8pt] (ffm.south) |- (join);
-  \draw[arrow] (pde.south) -- (numerical.north);
+  \draw[arrow] (fol.south) -- (numerical.north);
   \node[heading,below=8mm of numerical] (check) {Check the result on functions};
   \node[font=\large,below=4mm of check] {Fields, derivatives, observables, and laws};
   \draw[arrow] (numerical.south) -- (check.north);

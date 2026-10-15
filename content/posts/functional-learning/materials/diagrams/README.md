@@ -1,6 +1,6 @@
 # Original explanatory diagrams
 
-[functional-learning-elements.tex](functional-learning-elements.tex) is the editable LaTeX/TikZ source for Figure 14. It summarizes the note's building elements and separates optimization, physical evolution, and generative transport. It explicitly shows a finite code whose dimension can grow, with a field-preserving transfer as the refinement design condition. The website uses a vector SVG exported from the compiled PDF, with a white background and embedded glyph outlines for consistent rendering.
+[functional-learning-elements.tex](functional-learning-elements.tex) is the editable LaTeX/TikZ source for Figure 14. It summarizes the note's building elements and separates optimization time (FGD), discrete network-layer depth (FOL), and generative time (FFM). FOL composes functional layers on feature functions; physical time remains a coordinate of a predicted trajectory. The coordinate panel distinguishes layer composition from integration of continuous velocities. It explicitly shows a finite code whose dimension can grow, with a field-preserving transfer as the refinement design condition. The website uses a vector SVG exported from the compiled PDF, with a white background and embedded glyph outlines for consistent rendering.
 
 From the blog repository root:
 

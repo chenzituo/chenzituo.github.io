@@ -160,7 +160,7 @@
     "pdf_page": null,
     "creation": "LaTeX/TikZ compiled with pdflatex; vector SVG exported from the PDF with pdftocairo. Explicit white background and outlined font glyphs.",
     "license_url": null,
-    "changes": "Original diagram; no paper figure reproduced or modified. Rendered PNG and website preview checked for layout.",
+    "changes": "Original diagram; no paper figure reproduced or modified. Corrected 2026-10-15: FOL advances through network layers, not physical time; discrete layer composition is separated from continuous FGD/FFM velocities. Connection checked against Furuya et al. Section 4.1 and Calvello et al. Section 4.1, Equation (10). Rendered PNG and website preview checked for layout.",
     "source_tex": "diagrams/functional-learning-elements.tex"
   },
   {

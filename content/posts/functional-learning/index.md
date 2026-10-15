@@ -135,7 +135,7 @@ There are several things we might learn with such a representation:
 
 For the first problem, we need an update that reduces a functional \(\mathcal L(u)\). For the second, we need a shared map that takes different input functions to their corresponding solutions. For the third, we need dynamics that produce the intended distribution. These lead to functional gradient descent, operator learning, and functional flow matching, respectively.
 
-**Notation.** We use \(t\) for physical time, \(s\) for optimization time, and \(\tau\) for generative time. A space-time field \(u(x,t)\) can be one state in an optimization or generative process; updating it changes the entire field.
+**Notation.** We use \(t\) for physical time, \(s\) for optimization time, \(\tau\) for generative time, and \(\ell\) for network-layer depth. A space-time field \(u(x,t)\) can be one state in an optimization, operator construction, or generative process; updating that state can change the entire field while \(t\) remains its physical coordinate.
 
 ## 3. Three tasks of functional learning
 
@@ -699,7 +699,7 @@ Conditioning the learned velocity and enforcing observations during sampling are
 | Goal | Decrease a functional | Approximate a solution map uniformly over inputs | Transport a probability law |
 | Update mechanism | Negative Riesz gradient | Repeated approximate fixed-point blocks | Learned generative velocity |
 | Essential structure | Geometry and gradient accuracy | PDE well-posedness, contraction, kernel and nonlinear approximation | Measures, covariance, conditional paths |
-| Iteration meaning | Optimization time | Refinement of a whole candidate trajectory | Generative time |
+| Iteration meaning | Optimization time | Network-block depth: refinement of a whole candidate trajectory | Generative time |
 
 FFM's velocity need not be a gradient field. All three constructions face questions about representation, approximation, and stability.
 
@@ -717,20 +717,34 @@ Let \(a\) collect the coefficients, forcing, domain, and initial or boundary con
 | Operations | \(\mathcal O_hu,\ \mathcal A_a(u),\ Q(u)\) | How we observe the field, apply the governing model, and extract quantities |
 | Geometry and regularity | \(\langle\cdot,\cdot\rangle_H\), domains of operators | Which errors and changes are small; which operations are defined |
 | Target | \(u^\star(a),\ \mathcal S:a\mapsto u,\ \mu(du\mid a)\) | One solution, a solution map, or a conditional law |
-| Construction or evolution | \(\widehat{\mathcal S}:a\mapsto u\), \(u^{(k+1)}=\Phi_a(u^{(k)})\), or \(\partial_r u_r=V_r(u_r;a)\) | How to obtain or approach that target |
+| Construction or evolution | \(v^{\ell+1}=\mathcal T_\ell(v^\ell;a)\) or \(\partial_r u_r=V_r(u_r;a)\) | Compose functional layers for an operator, or evolve a field in optimization / generative time |
 | Numerical realization | \(z_m\in\mathbb R^{d_m},\ u\approx D_m(z_m)\), quadrature, integration | How finite coordinates realize the functional problem; adaptation can grow \(d_m\) |
 
 Here \(\mathcal O_h\) is an observation operator, \(\mathcal A_a\) is a physical or measurement model, and \(Q\) is a quantity such as drag or heat flux. The choice of \(H\) must support the required operations, possibly with additional regularity. For a probabilistic target, we must also specify a reference law and its covariance; the inner product alone does not determine a random function.
 
-An operator can predict directly or iterate as in Figure 8. For continuous evolution, \(r\) denotes optimization time \(s\) in FGD, generative time \(\tau\) in FFM, or physical time \(t\) in an evolution PDE. Figure 14 separates these motions from their numerical coordinates.
+**The update axis in FOL is network depth.** Write a layered operator as
 
-{{< figure src="figures/functional-learning-elements.svg" link="figures/functional-learning-elements.svg" width="720" alt="A functional learning problem specifies a field, operations, geometry, and target. Optimization, physical evolution, or generative transport supplies the motion. A decoder realizes it using a finite code that can grow under refinement while a transfer preserves the field." caption="**Figure 14.** Different tasks supply different motions of a function. The finite code z contains the chosen representation's values or coefficients; its dimension can grow. Exact preservation under refinement is a design condition, satisfied by the copying operations in the three default FGD representations. Original LaTeX/TikZ schematic." >}}
+$$
+\begin{aligned}
+v^0&=\mathcal E(a),\\
+v^{\ell+1}&=\mathcal T_\ell(v^\ell;a),\\
+\widehat{\mathcal S}(a)&=\mathcal P(v^L).
+\end{aligned}
+$$
+
+Here \(\mathcal E\) lifts the input into a feature function, \(\mathcal T_\ell\) updates that function, and \(\mathcal P\) maps the final features to the output field. The index \(\ell\) counts layers. If the output is a trajectory \(u(x,t)\), physical time \(t\) is a coordinate within that output.
+
+Figure 8 gives a concrete construction: each approximate Picard block adds depth and refines a whole candidate trajectory. Its contraction bound separates the error reduced by repeated blocks from the block-approximation error. In [continuum attention, Section 4.1, Equation (10)](https://www.jmlr.org/papers/volume26/24-0879/24-0879.pdf), successive attention, normalization, and feedforward operations instead update a feature function across encoder layers. These intermediate features need not be physical solution fields, and Figure 8's contraction argument does not automatically apply to a general attention network.
+
+Figure 14 therefore compares optimization time \(s\) in FGD, discrete layer depth \(\ell\) in FOL, and generative time \(\tau\) in FFM. Only the first and third are written here as continuous velocities; a continuous-depth limit for FOL would require a separate construction.
+
+{{< figure src="figures/functional-learning-elements.svg" link="figures/functional-learning-elements.svg" width="720" alt="Three functional constructions use different update axes: optimization time s for FGD, network-layer depth ell for FOL, and generative time tau for FFM. FOL composes discrete layers on feature functions. Finite coordinates represent fields or features and may be refined with a function-preserving transfer." caption="**Figure 14.** FGD updates a function in optimization time; FOL composes functional layers; FFM transports functions in generative time. FOL layer depth is distinct from the physical time coordinate of a predicted trajectory, as in Figure 8 and continuum attention. The decoder represents a field or feature function w using finite coordinates z. Exact preservation under refinement is a design condition, satisfied by the copying operations in the three default FGD representations. Original LaTeX/TikZ schematic." >}}
 
 ### Geometry and available updates {#geometry-induced-by-the-representation}
 
 The PINN Jacobian calculation extends to any differentiable decoder. Let \(u=D_m(z)\). Its derivative maps a small code change to a field change, \(D_m'(z)\delta z\). The decoder therefore determines which update directions are available and how large they are in the function norm.
 
-To approximate a desired field velocity \(V(u)\), minimize the mismatch:
+For a continuous update, we can approximate a desired field velocity \(V(u)\) by minimizing the mismatch. This tangent-space construction applies to continuous dynamics; discrete FOL layers instead approximate function-to-function maps.
 
 $$
 \dot z=\arg\min_b\|D_m'(z)b-V(D_m(z))\|_H^2.
